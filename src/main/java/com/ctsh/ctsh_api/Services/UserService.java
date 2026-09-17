@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.ctsh.ctsh_api.Dtos.UserRequestDto;
@@ -23,8 +24,12 @@ public class UserService implements UserDetailsService {
   @Autowired
   private UserRepository userRepository;
 
-  public UserService(UserRepository userRepository) {
+  @Autowired
+  private PasswordEncoder passwordEncoder;
+
+  public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
     this.userRepository = userRepository;
+    this.passwordEncoder = passwordEncoder;
   }
 
   public List<UserResponseDto> getAllUsers() {
@@ -37,13 +42,14 @@ public class UserService implements UserDetailsService {
     return toResponseDto(findUser(uuid));
   }
 
-  //todo: add encription for password
   public UserResponseDto createUser(UserRequestDto dto) {
     User user = new User();
+    String passwordHash = passwordEncoder.encode(dto.getPassword());
+
     user.setName(dto.getName());
     user.setEmail(dto.getEmail());
-    user.setPassword(dto.getPassword());
-    user.setProfilePicture(dto.getProfilePicture());
+    user.setPassword(passwordHash);
+    // user.setProfilePicture(dto.getProfilePicture());
     user.setRole(Role.USER);
     return toResponseDto(userRepository.save(user));
   }
@@ -52,8 +58,7 @@ public class UserService implements UserDetailsService {
     User user = findUser(uuid);
     user.setName(dto.getName());
     user.setEmail(dto.getEmail());
-    user.setPassword(dto.getPassword());
-    user.setProfilePicture(dto.getProfilePicture());
+    // user.setProfilePicture(dto.getProfilePicture());
     return toResponseDto(userRepository.save(user));
   }
 

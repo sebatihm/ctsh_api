@@ -1,4 +1,4 @@
-package com.ctsh.ctsh_api.config;
+package com.ctsh.ctsh_api.config.Auth;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
