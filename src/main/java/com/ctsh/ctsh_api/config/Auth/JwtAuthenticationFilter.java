@@ -1,4 +1,4 @@
-package com.ctsh.ctsh_api.config;
+package com.ctsh.ctsh_api.config.Auth;
 
 import java.io.IOException;
 import java.util.List;
@@ -12,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.ctsh.ctsh_api.Services.JwtService;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -52,9 +53,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         context.setAuthentication(auth);
         SecurityContextHolder.setContext(context);
       }
+    } catch (ExpiredJwtException e) {
+      request.setAttribute("jwt_error", "Expired token");
+      SecurityContextHolder.clearContext();
     } catch (JwtException | IllegalArgumentException e) {
+      request.setAttribute("jwt_error", "Invalid token or signature");
       SecurityContextHolder.clearContext();
     }
+
 
     filterChain.doFilter(request, response);
   }
