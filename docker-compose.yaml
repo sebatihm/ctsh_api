@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8
+    container_name: ctsh-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ctsh_db
+      MYSQL_USER: ctsh_user
+      MYSQL_PASSWORD: ctsh_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
