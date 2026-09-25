@@ -2,7 +2,7 @@ package com.ctsh.ctsh_api.Controllers;
 
 import org.springframework.web.bind.annotation.RestController;
 
-import com.ctsh.ctsh_api.Dtos.LoginDto;
+import com.ctsh.ctsh_api.Dtos.Validation.LoginDto;
 import com.ctsh.ctsh_api.Services.JwtService;
 
 import jakarta.validation.Valid;
@@ -36,11 +36,11 @@ public class AuthController {
     try {
       this.authenticationManager.authenticate(
         new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-          loginDto.getEmail(), loginDto.getPassword()
+          loginDto.email(), loginDto.password()
         )
       );
 
-      return ResponseEntity.ok(Map.of("token", jwtService.generateToken(loginDto.getEmail())));
+      return ResponseEntity.ok(Map.of("token", jwtService.generateToken(loginDto.email())));
 
     } catch (org.springframework.security.core.AuthenticationException e) {
       return ResponseEntity.status(401).body(Map.of("error", "Invalid email or password"));

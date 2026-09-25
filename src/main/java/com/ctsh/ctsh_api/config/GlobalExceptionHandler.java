@@ -4,13 +4,17 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.ctsh.ctsh_api.Dtos.ApiError;
+import com.ctsh.ctsh_api.Exceptions.ApiException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -38,4 +42,12 @@ public class GlobalExceptionHandler {
                 .toList());
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ApiError> handleApiException(ApiException ex, HttpServletRequest request) {
+    HttpStatus status = ex.getStatus();
+    ApiError body = ApiError.of(status, ex.getMessage(), request.getRequestURI());
+    return ResponseEntity.status(status).body(body);
+    }
+
 }
