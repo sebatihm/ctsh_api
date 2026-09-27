@@ -2,7 +2,6 @@ package com.ctsh.ctsh_api.Services;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,20 +19,14 @@ import com.ctsh.ctsh_api.Models.Enum.Role;
 import com.ctsh.ctsh_api.Models.User;
 import com.ctsh.ctsh_api.Repositories.UserRepository;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 public class UserService implements UserDetailsService {
 
-  @Autowired
-  private UserRepository userRepository;
+  private final UserRepository userRepository;
 
-  @Autowired
-  private PasswordEncoder passwordEncoder;
+  private final PasswordEncoder passwordEncoder;
 
-  @Autowired 
-  private FileService fileService;
+  private final FileService fileService;
 
   public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, FileService fileService) {
     this.userRepository = userRepository;
@@ -50,7 +43,7 @@ public class UserService implements UserDetailsService {
 
   public UserResponseDto getUserById(String uuid) {
     User user = findUser(uuid);
-    requireSameUserOrAdmin(user.getEmail(), uuid);
+    requireSameUserOrAdmin(user.getEmail());
     return toResponseDto(user);
   }
 
@@ -76,7 +69,7 @@ public class UserService implements UserDetailsService {
 
   public UserResponseDto updateUser(String uuid, UserRequestDto dto) {
     User user = findUser(uuid);
-    requireSameUserOrAdmin(user.getEmail(), uuid);
+    requireSameUserOrAdmin(user.getEmail());
 
     userRepository.findByEmail(dto.email())
       .filter(existing -> !existing.getUuid().equals(uuid))
@@ -103,7 +96,7 @@ public class UserService implements UserDetailsService {
 
   public void deleteUser(String uuid) {
     User user = findUser(uuid);
-    requireSameUserOrAdmin(user.getEmail(), uuid);
+    requireSameUserOrAdmin(user.getEmail());
 
     if (user.getProfilePicture() != null) {
       fileService.deleteFile(user.getProfilePicture());
@@ -123,7 +116,7 @@ public class UserService implements UserDetailsService {
     dto.setName(user.getName());
     dto.setEmail(user.getEmail());
     dto.setRole(user.getRole());
-    dto.setProfilePicture(user.getProfilePicture());
+    dto.setProfilePicture(fileService.getPublicUrl(user.getProfilePicture()));
     return dto;
   }
 
@@ -140,12 +133,12 @@ public class UserService implements UserDetailsService {
 
   }
 
-  private void requireSameUserOrAdmin(String ownerEmail, String targetUuid) {
+  private void requireSameUserOrAdmin(String ownerEmail) {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     boolean isAdmin = auth.getAuthorities().stream()
         .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     if (!isAdmin && !ownerEmail.equals(auth.getName())) {
-      throw new AccessDeniedException("You can only modify or delete your own user");
+      throw new AccessDeniedException("You can only read, modify or delete your own user");
     }
   }
 }

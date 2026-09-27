@@ -50,7 +50,8 @@ public class SecurityConfig {
             .accessDeniedHandler(accessDeniedHandler))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.POST, "/user").permitAll()
-            .requestMatchers("/user/**").hasRole("ADMIN")
+            .requestMatchers(HttpMethod.GET, "/user").hasRole("ADMIN")
+            .requestMatchers("/user/**").authenticated()
             .requestMatchers("/uploads/**").permitAll()
             .requestMatchers("/login").permitAll()
             .requestMatchers("/error").permitAll()

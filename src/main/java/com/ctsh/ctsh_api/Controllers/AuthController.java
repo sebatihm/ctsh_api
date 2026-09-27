@@ -11,7 +11,6 @@ import com.ctsh.ctsh_api.Services.JwtService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -22,14 +21,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RestController 
 public class AuthController {
 
-  @Autowired 
-  private AuthenticationProvider authenticationManager;
+  private final AuthenticationProvider authenticationManager;
 
-  @Autowired
-  private JwtService jwtService;
+  private final JwtService jwtService;
 
-  @Autowired
-  private CookieService cookieService;
+  private final CookieService cookieService;
 
   
   public AuthController(AuthenticationProvider authenticationManager, JwtService jwtService, CookieService cookieService) {

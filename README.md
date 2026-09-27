@@ -28,6 +28,7 @@ A Spring Boot REST API for user management and JWT-based authentication made for
 
    - `CTSH_PEPPER` — pepper used by the password encoder
    - `CTSH_JWT_SECRET` — secret used to sign JWT tokens
+   - `CTSH_BACKEND_URL` — public base URL of this service, used to build profile picture URLs
 
 3. Run the application:
 
@@ -45,14 +46,16 @@ The API is served under the `/api` context path. There is no CORS configuration:
 | POST   | `/api/logout` | Public | Clears the `jwt` auth cookie |
 | POST   | `/api/user`  | Public | Create a user, `multipart/form-data` |
 | GET    | `/api/user`  | ADMIN  | List all users |
-| GET    | `/api/user/{uuid}` | ADMIN | Get a user by id |
-| PUT    | `/api/user/{uuid}` | ADMIN | Update a user, `multipart/form-data` |
-| DELETE | `/api/user/{uuid}` | ADMIN | Delete a user, returns `204` |
+| GET    | `/api/user/{uuid}` | Owner or ADMIN | Get a user by id |
+| PUT    | `/api/user/{uuid}` | Owner or ADMIN | Update a user, `multipart/form-data` |
+| DELETE | `/api/user/{uuid}` | Owner or ADMIN | Delete a user, returns `204` |
 | GET    | `/api/uploads/{file}` | Public | Serve a stored profile picture |
 
 `/api/logout` is not a controller endpoint — it is Spring Security's `LogoutFilter` (`src/main/java/com/ctsh/ctsh_api/config/SecurityConfig.java`), wired to `JwtLogoutHandler`, which both deletes the cookie and writes the `200` JSON body. Because `LogoutFilter` runs *before* `JwtAuthenticationFilter`, logout never inspects the token: it succeeds with an expired, malformed, or missing cookie instead of returning `401`. The trade-off is that a client with a dead token can still reliably clear its cookie.
 
 Creating and updating users take `multipart/form-data`, not JSON. See [Profile pictures](#profile-pictures) for the fields.
+
+`GET /api/user` lists every user and stays ADMIN-only. The `/user/{uuid}` routes instead require just `authenticated()`: Spring Security does not know whose record is being requested, so `UserService.requireSameUserOrAdmin` makes the real decision and rejects anything that is neither the owner nor an ADMIN with a `403`. The split is deliberate — coarse authorization at the edge, fine-grained ownership in the service. A `USER` cannot escalate to `ADMIN` this way, because the update DTO carries no `role` field and `updateUser` never touches it.
 
 ## Profile pictures
 
@@ -70,7 +73,9 @@ Notes:
 - On update, every part is optional — an absent part leaves the field untouched. A `profilePicture` part, when present, replaces the stored file and deletes the old one.
 - `password` is only read on create; there is no password-change endpoint.
 - A user is always created with the `USER` role.
-- `UserResponseDto.profilePicture` is a bare file name (e.g. `9f1c….png`), not a URL. Build the URL as `/api/uploads/profiles/{profilePicture}`.
+- `UserResponseDto.profilePicture` is an absolute, browser-ready URL built by `FileService.getPublicUrl` — for example `http://localhost:8080/api/uploads/profiles/9f1c….png`. The client must not construct it. It is `null` when the user has no picture, so "no photo" and "photo failed to load" stay distinguishable.
+
+The database still stores the bare file name in `User.profilePicture`; only the response is a URL, so no data migration is needed when you deploy this.
 
 Validation happens in `FileService`: the size must be under 5 MB, the content type must start with `image/`, and the extension must be one of `jpg`, `jpeg`, `png`, `webp`, `gif`.
 
@@ -81,16 +86,33 @@ Files are written to `uploads/profiles/<random-uuid>.<ext>` and served as static
 
 ### Upload size limit
 
-`FileService` rejects files over 5 MB, but that check is unreachable for anything larger than **1 MB**: there is no `spring.servlet.multipart.*` configuration, so the servlet container's default `max-file-size` (1 MB) rejects the request first and it never reaches the controller. To make the documented 5 MB limit real, add to `application.properties`:
+Two limits apply, both set in `application.properties`:
 
-```properties
-spring.servlet.multipart.max-file-size=5MB
-spring.servlet.multipart.max-request-size=5MB
-```
+| Property | Value | Applies to |
+|----------|-------|------------|
+| `spring.servlet.multipart.max-file-size` | `5MB` | One file |
+| `spring.servlet.multipart.max-request-size` | `6MB` | The whole multipart body |
+
+`max-request-size` is deliberately larger than `max-file-size`: the request also carries the `name`, `email` and `password` parts plus the MIME boundaries, so an image near the per-file limit would trip a request limit set to the same value and be rejected for the wrong reason.
+
+The container rejects an oversized upload with a `413` before it reaches the controller, so `FileService.validateFile` never sees it — that is why the two layers agree on the same 5 MB number instead of one shadowing the other. `GlobalExceptionHandler` maps that `413` to the same `ApiError` envelope as every other error, and `validateFile` returns a `400` for files that clear the size gate but fail the content-type or extension check.
 
 ## Configuration
 
 Database and security settings live in `src/main/resources/application.properties`.
+
+### Uploads and public URL
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `app.url.backend` | `http://localhost:8080` | Public base URL this service is reached at, i.e. `${CTSH_BACKEND_URL}` |
+| `app.uploads.dir` | `uploads` | On-disk root, relative to the process working directory |
+| `app.uploads.url-path` | `/uploads` | Path the files are served at, under the context path |
+
+`FileService.getPublicUrl` assembles the profile picture URL from all of them: `{app.url.backend}{server.servlet.context-path}{app.uploads.url-path}/profiles/{file}`, so the four parts cannot drift apart.
+
+`app.url.backend` has to be the **public** origin, because the URL ends up in a JSON response that the end user's browser fetches. Do not put the container's internal address there. In production, where nginx serves the frontend and proxies `/api` to this service, set it to the public origin (`https://miapp.com`) so the browser only ever talks to one host.
+
 
 ### Auth cookie
 
