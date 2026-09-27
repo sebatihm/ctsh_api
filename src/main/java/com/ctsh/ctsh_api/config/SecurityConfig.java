@@ -13,12 +13,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.ctsh.ctsh_api.Services.CookieService;
+import com.ctsh.ctsh_api.Services.JwtService;
 import com.ctsh.ctsh_api.config.Auth.CustomAccessDeniedHandler;
 import com.ctsh.ctsh_api.config.Auth.CustomAuthenticationEntryPoint;
 import com.ctsh.ctsh_api.config.Auth.JwtAuthenticationFilter;
 import com.ctsh.ctsh_api.config.Auth.PepperedPasswordEncoder;
 
-@Configuration 
+@Configuration
 @EnableWebSecurity 
 public class SecurityConfig {
   
@@ -26,20 +28,17 @@ public class SecurityConfig {
   @Value("${app.security.pepper}")
   private String pepper;
   
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final CustomAccessDeniedHandler accessDeniedHandler;
   private final CustomAuthenticationEntryPoint entryPoint;
 
-  SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                 CustomAccessDeniedHandler accessDeniedHandler,
+  SecurityConfig(CustomAccessDeniedHandler accessDeniedHandler,
                  CustomAuthenticationEntryPoint entryPoint) {
-    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     this.accessDeniedHandler = accessDeniedHandler;
     this.entryPoint = entryPoint;
   }
 
   @Bean 
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain filterChain(HttpSecurity http, JwtService jwtService, CookieService cookieService) throws Exception {
     http.csrf(csrf -> csrf.disable())
         .sessionManagement(session -> session.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
          .exceptionHandling(ex -> ex
@@ -52,7 +51,7 @@ public class SecurityConfig {
             .requestMatchers("/login").permitAll()
             .requestMatchers("/error").permitAll()
             .anyRequest().authenticated())
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(new JwtAuthenticationFilter(jwtService, cookieService), UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
 

@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.ctsh.ctsh_api.Services.CookieService;
 import com.ctsh.ctsh_api.Services.JwtService;
 
 import io.jsonwebtoken.ExpiredJwtException;
@@ -19,27 +19,36 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-@Component
+
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  @Autowired
-  private JwtService jwtService;
+  private final JwtService jwtService;
 
-  public JwtAuthenticationFilter(JwtService jwtService) {
+  private final CookieService cookieService;
+
+  public JwtAuthenticationFilter(JwtService jwtService, CookieService cookieService) {
     this.jwtService = jwtService;
+    this.cookieService = cookieService;
   }
 
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
       String header = request.getHeader("Authorization");
+      boolean tokenFromCookie = false;
+      String token;
 
-      if (header == null || !header.startsWith("Bearer ")) {
+      if (header != null && header.startsWith("Bearer ")) {
+        token = header.substring(7);
+      } else {
+        token = cookieService.getCookieValue(request);
+        tokenFromCookie = token != null;
+      }
+
+      if (token == null || token.isBlank()) {
         filterChain.doFilter(request, response);
         return;
       }
-
-      String token = header.substring(7);
 
     try {
       UserInfo userInfo = jwtService.decodeToken(token);
@@ -56,9 +65,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     } catch (ExpiredJwtException e) {
       request.setAttribute("jwt_error", "Expired token");
       SecurityContextHolder.clearContext();
+      if (tokenFromCookie) {
+        cookieService.deleteCookie(response);
+      }
     } catch (JwtException | IllegalArgumentException e) {
       request.setAttribute("jwt_error", "Invalid token or signature");
       SecurityContextHolder.clearContext();
+      if (tokenFromCookie) {
+        cookieService.deleteCookie(response);
+      }
     }
 
 
