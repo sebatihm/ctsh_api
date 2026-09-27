@@ -1,0 +1,52 @@
+{"properties": [
+  {
+    "name": "app.security.pepper",
+    "type": "java.lang.String",
+    "description": "Pepper for the password hashing. This should be a long, random string that is kept secret and not stored in the database."
+  },
+  {
+    "name": "app.jwt.secret",
+    "type": "java.lang.String",
+    "description": "The secret key used to sign the JWT tokens."
+  },
+  {
+    "name": "app.jwt.ttl-seconds",
+    "type": "java.lang.String",
+    "description": "The time-to-live for the JWT tokens, in seconds."
+  },
+  {
+    "name": "app.cookie.name",
+    "type": "java.lang.String",
+    "description": "The name of the cookie used to store the JWT token."
+  },
+  {
+    "name": "app.cookie.secure",
+    "type": "java.lang.String",
+    "description": "Defines if the cookie should be marked as secure, meaning it will only be sent over HTTPS connections."
+  },
+  {
+    "name": "app.cookie.same-site",
+    "type": "java.lang.String",
+    "description": "Defines the SameSite attribute for the cookie, which can be 'Strict', 'Lax', or 'None'. This controls whether the cookie is sent with cross-site requests."
+  },
+  {
+    "name": "app.cookie.max-age-seconds",
+    "type": "java.lang.String",
+    "description": "The maximum age of the cookie, in seconds."
+  },
+  {
+    "name": "app.url.backend",
+    "type": "java.lang.String",
+    "description": "The base URL for the backend API."
+  },
+  {
+    "name": "app.uploads.dir",
+    "type": "java.lang.String",
+    "description": "The directory where uploaded files are stored."
+  },
+  {
+    "name": "app.uploads.url-path",
+    "type": "java.lang.String",
+    "description": "The URL path prefix for accessing uploaded files."
+  }
+]}
