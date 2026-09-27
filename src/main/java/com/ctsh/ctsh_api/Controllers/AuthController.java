@@ -58,14 +58,4 @@ public class AuthController {
     }
   }
 
-  @PostMapping("logout")
-  public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
-    this.cookieService.deleteCookie(response);
-      
-    return ResponseEntity.status(HttpStatus.OK).body(
-      ApiResponse.of(HttpStatus.OK, "Logout successful", null)
-    );
-  }
-  
-  
 }
