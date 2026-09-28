@@ -71,11 +71,6 @@ public class UserService implements UserDetailsService {
     User user = findUser(uuid);
     requireSameUserOrAdmin(user.getEmail());
 
-    userRepository.findByEmail(dto.email())
-      .filter(existing -> !existing.getUuid().equals(uuid))
-      .ifPresent(existing -> {
-          throw new ResourceAlreadyExistsException("Email already registered: " + dto.email());
-      });
 
     if (dto.profilePicture() != null && !dto.profilePicture().isEmpty()) {
       this.fileService.validateFile(dto.profilePicture());
@@ -85,10 +80,6 @@ public class UserService implements UserDetailsService {
 
     if (dto.name() != null && !dto.name().isBlank()) {
       user.setName(dto.name());
-    }
-
-    if (dto.email() != null && !dto.email().isBlank()) {
-      user.setEmail(dto.email());
     }
 
     return toResponseDto(userRepository.save(user));
