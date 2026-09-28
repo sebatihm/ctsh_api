@@ -1,8 +1,6 @@
 package com.ctsh.ctsh_api.Controllers.Error;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 
 import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.http.HttpStatus;
@@ -10,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.ctsh.ctsh_api.config.Auth.ApiError;
+import com.ctsh.ctsh_api.Dtos.ApiError;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;

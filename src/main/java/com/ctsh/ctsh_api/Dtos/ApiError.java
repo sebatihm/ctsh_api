@@ -1,4 +1,4 @@
-package com.ctsh.ctsh_api.config.Auth;
+package com.ctsh.ctsh_api.Dtos;
 
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
