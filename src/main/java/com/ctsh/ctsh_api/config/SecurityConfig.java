@@ -19,7 +19,6 @@ import com.ctsh.ctsh_api.config.Auth.CustomAccessDeniedHandler;
 import com.ctsh.ctsh_api.config.Auth.CustomAuthenticationEntryPoint;
 import com.ctsh.ctsh_api.config.Auth.JwtAuthenticationFilter;
 import com.ctsh.ctsh_api.config.Auth.PepperedPasswordEncoder;
-import com.ctsh.ctsh_api.config.Auth.JwtLogoutHandler;
 
 @Configuration
 @EnableWebSecurity 
@@ -31,20 +30,18 @@ public class SecurityConfig {
   
   private final CustomAccessDeniedHandler accessDeniedHandler;
   private final CustomAuthenticationEntryPoint entryPoint;
-  private final JwtLogoutHandler JwtLogoutHandler;
 
   SecurityConfig(CustomAccessDeniedHandler accessDeniedHandler,
-                 CustomAuthenticationEntryPoint entryPoint,
-                JwtLogoutHandler jwtLogoutHandler) {
+                 CustomAuthenticationEntryPoint entryPoint) {
     this.accessDeniedHandler = accessDeniedHandler;
     this.entryPoint = entryPoint;
-    this.JwtLogoutHandler = jwtLogoutHandler; 
   }
 
   @Bean 
   public SecurityFilterChain filterChain(HttpSecurity http, JwtService jwtService, CookieService cookieService) throws Exception {
     http.csrf(csrf -> csrf.disable())
         .sessionManagement(session -> session.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
+        .logout(logout -> logout.disable())
          .exceptionHandling(ex -> ex
             .authenticationEntryPoint(entryPoint)
             .accessDeniedHandler(accessDeniedHandler))
@@ -56,11 +53,6 @@ public class SecurityConfig {
             .requestMatchers("/login").permitAll()
             .requestMatchers("/error").permitAll()
             .anyRequest().authenticated())
-          .logout(logout -> logout
-              .logoutUrl("/logout")
-              .addLogoutHandler(JwtLogoutHandler)
-              .logoutSuccessHandler(JwtLogoutHandler)
-          )
         .addFilterBefore(new JwtAuthenticationFilter(jwtService, cookieService), UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }

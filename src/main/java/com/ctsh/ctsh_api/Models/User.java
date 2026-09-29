@@ -2,6 +2,7 @@ package com.ctsh.ctsh_api.Models;
 
 import com.ctsh.ctsh_api.Models.Enum.Role;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -18,20 +19,25 @@ public class User {
   @Getter @Setter
   private String uuid;
 
-  @Getter @Setter 
+  @Getter @Setter
+  @Column(nullable = false)
   private String name;
 
   @Getter @Setter
+  @Column(nullable = false, unique = true)
   private String email;
   
   @Getter @Setter
+  @Column(nullable = false)
   private String password;
 
   @Enumerated(EnumType.STRING)
   @Getter @Setter
+  @Column(nullable = false, length = 20)
   private Role role;
 
   @Getter @Setter
+  @Column(nullable = false)
   private String profilePicture;
 
   public User(String uuid, String name, String email, String password, Role role, String profilePicture) {

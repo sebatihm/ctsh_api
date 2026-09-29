@@ -10,11 +10,10 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.ctsh.ctsh_api.Exceptions.ApiException;
+import com.ctsh.ctsh_api.Exceptions.BadRequestException;
 
 @Service 
 public class FileService {
@@ -50,12 +49,12 @@ public class FileService {
   public void validateFile(MultipartFile fileData) {
 
     if (fileData.getSize() > MAX_FILE_SIZE) {
-        throw new ApiException(HttpStatus.BAD_REQUEST, "File size exceeds the 5 MB limit");
+        throw new BadRequestException("File size exceeds the 5 MB limit");
     }
 
     String contentType = fileData.getContentType();
     if (contentType == null || !contentType.startsWith("image/")) {
-        throw new ApiException(HttpStatus.BAD_REQUEST, "File type must be an image");
+        throw new BadRequestException("File type must be an image");
     }
   }
 
@@ -67,7 +66,7 @@ public class FileService {
       String filename = UUID.randomUUID() + "." + ext;      
       Path target = storageDir.resolve(filename).normalize();
       if (!target.startsWith(storageDir.normalize())) {
-        throw new ApiException(HttpStatus.BAD_REQUEST,"Invalid file name");
+        throw new BadRequestException("Invalid file name");
       }
       try (InputStream in = file.getInputStream()) {
         Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
@@ -84,7 +83,7 @@ public class FileService {
      try {
       Path target = storageDir.resolve(fileName).normalize();
       if (!target.startsWith(storageDir.normalize())) {
-        throw new ApiException(HttpStatus.BAD_REQUEST,"Invalid file name");
+        throw new BadRequestException("Invalid file name");
       }
       Files.deleteIfExists(target);
     } catch (IOException e) {
@@ -106,11 +105,11 @@ public class FileService {
     String name = fileNameOnly == null ? "" : fileNameOnly.toString();
     int dot = name.lastIndexOf('.');
     if (dot <= 0 || dot == name.length() - 1) {
-      throw new ApiException(HttpStatus.BAD_REQUEST, "File must have a valid extension");
+      throw new BadRequestException("File must have a valid extension");
     }
     String ext = name.substring(dot + 1).toLowerCase(Locale.ROOT);
     if (!ALLOWED_EXTENSIONS.contains(ext)) {
-      throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid file extension: " + ext);
+      throw new BadRequestException("Invalid file extension: " + ext);
     }
     return ext;
   }
