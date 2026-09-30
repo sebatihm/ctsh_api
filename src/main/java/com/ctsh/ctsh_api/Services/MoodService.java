@@ -55,7 +55,7 @@ public class MoodService {
   private String normalizeName(String name) {
     String normalized = name.trim().toLowerCase(Locale.ROOT);
     if (!VALID_NAME.matcher(normalized).matches()) {
-      throw new BadRequestException("Invalid mood name: must be 1-50 characters without spaces and only contain lowercase letters, numbers, underscores, or hyphens.");
+      throw new BadRequestException("Invalid mood name: must be 1-50 characters, letters, numbers, underscores, or hyphens.");
     }
     return normalized;
   }

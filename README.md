@@ -1,6 +1,6 @@
 # CTSH_API
 
-A Spring Boot REST API for user management and JWT-based authentication made for the ctsh proyect, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
+A Spring Boot REST API for user management, global mood counters and JWT-based authentication made for the ctsh proyect, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
 
 ## Tech stack
 
@@ -43,19 +43,31 @@ The API is served under the `/api` context path. There is no CORS configuration:
 | Method | Path    | Access      | Description            |
 |--------|---------|-------------|------------------------|
 | POST   | `/api/login` | Public | Authenticate, sets the `jwt` auth cookie |
-| POST   | `/api/logout` | Public | Clears the `jwt` auth cookie |
+| POST   | `/api/logout` | Authenticated | Clears the `jwt` auth cookie |
 | POST   | `/api/user`  | Public | Create a user, `multipart/form-data` |
 | GET    | `/api/user`  | ADMIN  | List all users |
 | GET    | `/api/user/{uuid}` | Owner or ADMIN | Get a user by id |
 | PUT    | `/api/user/{uuid}` | Owner or ADMIN | Update a user, `multipart/form-data` |
 | DELETE | `/api/user/{uuid}` | Owner or ADMIN | Delete a user, returns `204` |
+| GET    | `/api/mood` | Authenticated | List all moods |
+| GET    | `/api/mood/{name}` | Public | Get one mood by name |
+| POST   | `/api/mood/{name}` | Public | Increment a mood counter, creating it on first use |
+| DELETE | `/api/mood/{name}` | ADMIN | Delete a mood, returns `204` |
 | GET    | `/api/uploads/{file}` | Public | Serve a stored profile picture |
 
-`/api/logout` is not a controller endpoint — it is Spring Security's `LogoutFilter` (`src/main/java/com/ctsh/ctsh_api/config/SecurityConfig.java`), wired to `JwtLogoutHandler`, which both deletes the cookie and writes the `200` JSON body. Because `LogoutFilter` runs *before* `JwtAuthenticationFilter`, logout never inspects the token: it succeeds with an expired, malformed, or missing cookie instead of returning `401`. The trade-off is that a client with a dead token can still reliably clear its cookie.
+`/api/logout` is a controller endpoint (`AuthController.logout`), not Spring Security's `LogoutFilter`, which is explicitly disabled in `SecurityConfig.java`. The route requires authentication, so logout answers `401` unless the request carries a valid token. `JwtAuthenticationFilter` does clear the cookie as a side effect when a token is present but expired or malformed, but the response is still `401`, so a client with a dead token never gets a clean `200` out of logout.
 
 Creating and updating users take `multipart/form-data`, not JSON. See [Profile pictures](#profile-pictures) for the fields.
 
 `GET /api/user` lists every user and stays ADMIN-only. The `/user/{uuid}` routes instead require just `authenticated()`: Spring Security does not know whose record is being requested, so `UserService.requireSameUserOrAdmin` makes the real decision and rejects anything that is neither the owner nor an ADMIN with a `403`. The split is deliberate — coarse authorization at the edge, fine-grained ownership in the service. A `USER` cannot escalate to `ADMIN` this way, because the update DTO carries no `role` field and `updateUser` never touches it.
+
+## Moods
+
+`Mood` is a global counter keyed by name. `POST /api/mood/happy` moves `happy` from 41 to 42, and the row is created with `count = 1` the first time anyone asks for it. There is no per-user vote and no vote history, so the same client can increment the same mood as many times as it wants.
+
+The increment is a single `INSERT ... ON DUPLICATE KEY UPDATE count = count + 1` (`MoodRepository.upsertIncrement`). One statement is what makes it race-free: two simultaneous first votes for a new name cannot both insert, and the loser is folded into the same row atomically instead of failing on the `UNIQUE` index and needing a retry.
+
+Names are lowercased and must then match `^[a-z0-9_-]{1,50}$` — ASCII only, no spaces and no accents. Anything else is a `400` before it reaches the database. `GET /api/mood/Happy` and `GET /api/mood/happy` are the same request, but `GET /api/mood/very%20happy` is not a valid name at all.
 
 ## Profile pictures
 
@@ -70,12 +82,9 @@ Creating and updating users take `multipart/form-data`, not JSON. See [Profile p
 
 Notes:
 
-- On update, every part is optional — an absent part leaves the field untouched. A `profilePicture` part, when present, replaces the stored file and deletes the old one.
-- `password` is only read on create; there is no password-change endpoint.
 - A user is always created with the `USER` role.
 - `UserResponseDto.profilePicture` is an absolute, browser-ready URL built by `FileService.getPublicUrl` — for example `http://localhost:8080/api/uploads/profiles/9f1c….png`. The client must not construct it. It is `null` when the user has no picture, so "no photo" and "photo failed to load" stay distinguishable.
 
-The database still stores the bare file name in `User.profilePicture`; only the response is a URL, so no data migration is needed when you deploy this.
 
 Validation happens in `FileService`: the size must be under 5 MB, the content type must start with `image/`, and the extension must be one of `jpg`, `jpeg`, `png`, `webp`, `gif`.
 
@@ -83,19 +92,6 @@ Files are written to `uploads/profiles/<random-uuid>.<ext>` and served as static
 
 - `uploads/` is a relative path, so it resolves against the process working directory. The directory is git-ignored, and its contents are local-only state — do not expect them in a fresh clone or a scaled-out deployment.
 - The `/uploads/**` route is `permitAll`, so profile pictures are readable by anyone who knows or guesses the file name. The names are random UUIDs, which is the only thing protecting them. Do not treat them as private.
-
-### Upload size limit
-
-Two limits apply, both set in `application.properties`:
-
-| Property | Value | Applies to |
-|----------|-------|------------|
-| `spring.servlet.multipart.max-file-size` | `5MB` | One file |
-| `spring.servlet.multipart.max-request-size` | `6MB` | The whole multipart body |
-
-`max-request-size` is deliberately larger than `max-file-size`: the request also carries the `name`, `email` and `password` parts plus the MIME boundaries, so an image near the per-file limit would trip a request limit set to the same value and be rejected for the wrong reason.
-
-The container rejects an oversized upload with a `413` before it reaches the controller, so `FileService.validateFile` never sees it — that is why the two layers agree on the same 5 MB number instead of one shadowing the other. `GlobalExceptionHandler` maps that `413` to the same `ApiError` envelope as every other error, and `validateFile` returns a `400` for files that clear the size gate but fail the content-type or extension check.
 
 ## Configuration
 
