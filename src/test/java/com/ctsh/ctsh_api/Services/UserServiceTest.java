@@ -1,6 +1,7 @@
 package com.ctsh.ctsh_api.Services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +21,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.Authentication;
 
@@ -51,6 +54,7 @@ class UserServiceTest {
     user.setUuid("test-uuid");
     user.setName("Test User");
     user.setEmail("example123@email.com");
+    user.setRole(Role.USER);
     user.setProfilePicture("profile.jpg");
     return user;
   }
@@ -299,6 +303,41 @@ class UserServiceTest {
     });
 
     verify(userRepository, never()).delete(any(User.class));
+  }
+
+  @Test
+  void testLoadUserByUsernameShouldReturnUserDetails() {
+    User user = createTestUser();
+
+    when(userRepository.findByEmail(user.getEmail()))
+        .thenReturn(Optional.of(user));
+
+    UserDetails result = userService.loadUserByUsername(user.getEmail());
+
+    assertEquals(user.getEmail(), result.getUsername());
+    assertEquals(user.getPassword(), result.getPassword());
+    assertTrue(result.getAuthorities().stream()
+        .anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
+
+    verify(userRepository).findByEmail(user.getEmail());
+  }
+
+  @Test
+  void testLoadUserByUsernameShouldThrowExceptionWhenUserDoesNotExist() {
+    when(userRepository.findByEmail("unknown@example.com"))
+        .thenReturn(Optional.empty());
+
+    UsernameNotFoundException exception = assertThrows(
+        UsernameNotFoundException.class,
+        () -> userService.loadUserByUsername("unknown@example.com")
+    );
+
+    assertEquals(
+        "User not found with email: unknown@example.com",
+        exception.getMessage()
+    );
+
+    verify(userRepository).findByEmail("unknown@example.com");
   }
 
 }
