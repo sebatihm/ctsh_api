@@ -3,6 +3,7 @@ package com.ctsh.ctsh_api.Dtos.Validation;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ctsh.ctsh_api.Dtos.Validation.ValidationGroups.OnCreate;
+import com.ctsh.ctsh_api.Dtos.Validation.ValidationGroups.OnUpdate;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -13,6 +14,7 @@ import jakarta.validation.constraints.Size;
 
 public record UserRequestDto (
   @NotBlank(groups = {OnCreate.class}, message = "Name cannot be blank")
+  @NotEmpty(groups = {OnUpdate.class}, message = "Name cannot be empty")
   String name,
 
   @NotBlank(groups = {OnCreate.class}, message = "Email cannot be blank")
