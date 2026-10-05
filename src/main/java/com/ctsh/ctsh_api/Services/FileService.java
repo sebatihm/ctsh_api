@@ -101,6 +101,12 @@ public class FileService {
   }
 
   private String extractExtension(String originalFilename) {
+    if (originalFilename == null || originalFilename.isBlank()) {
+      throw new BadRequestException(
+          "File must have a valid extension"
+      );
+    }
+  
     Path fileNameOnly = Path.of(originalFilename).getFileName();
     String name = fileNameOnly == null ? "" : fileNameOnly.toString();
     int dot = name.lastIndexOf('.');
