@@ -7,5 +7,5 @@ public class MailResponseDto {
   String uuid;
   UserResponseDto from;
   UserResponseDto to;
-  String text;
+  String message;
 }

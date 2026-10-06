@@ -40,7 +40,7 @@ public class MailService {
     Mail mail = new Mail();
     mail.setFrom(getUser(dto.fromUuid()));
     mail.setTo(getUser(dto.toUuid()));
-    mail.setText(dto.text());
+    mail.setMessage(dto.message());
     return mailMapper.toResponseDto(mailRepository.save(mail));
   }
 
@@ -55,8 +55,8 @@ public class MailService {
       mail.setTo(getUser(dto.toUuid()));
     }
 
-    if (dto.text() != null) {
-      mail.setText(dto.text());
+    if (dto.message() != null) {
+      mail.setMessage(dto.message());
     }
     return mailMapper.toResponseDto(mailRepository.save(mail));
   }

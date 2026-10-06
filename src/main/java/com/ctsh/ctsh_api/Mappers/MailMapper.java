@@ -23,7 +23,7 @@ public class MailMapper {
     dto.setUuid(mail.getUuid());
     dto.setFrom(fromUserDto);
     dto.setTo(toUserDto);
-    dto.setText(mail.getText());
+    dto.setMessage(mail.getMessage());
     return dto;
   }
   

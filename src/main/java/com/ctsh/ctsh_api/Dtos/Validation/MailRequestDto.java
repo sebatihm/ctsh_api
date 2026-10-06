@@ -13,5 +13,5 @@ public record MailRequestDto(
   String toUuid,
 
   @NotBlank(groups = {OnCreate.class}, message = "The text cannot be blank")
-  String text
+  String message
 ) {}

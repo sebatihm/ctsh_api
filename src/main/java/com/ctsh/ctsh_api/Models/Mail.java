@@ -29,5 +29,5 @@ public class Mail {
 
   @Column (nullable = false, columnDefinition = "TEXT")
   @Getter @Setter
-  private String text;
+  private String message;
 }
