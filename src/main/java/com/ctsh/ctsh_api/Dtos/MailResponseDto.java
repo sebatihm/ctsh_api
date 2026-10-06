@@ -5,7 +5,7 @@ import lombok.Data;
 @Data 
 public class MailResponseDto {
   String uuid;
-  UserResponseDto fromUuuid;
-  UserResponseDto toUuuid;
+  UserResponseDto from;
+  UserResponseDto to;
   String text;
 }
