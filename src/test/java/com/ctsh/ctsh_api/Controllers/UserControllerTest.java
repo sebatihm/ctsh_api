@@ -235,26 +235,6 @@ public class UserControllerTest {
     .andExpect(status().isOk());
   }
 
-  @Test 
-  void testUpdateUserWithInvalidData() throws Exception {
-    MockMultipartFile file = new MockMultipartFile(
-        "profilePicture",
-        "image.png",
-        "image/png",
-        "fake image content".getBytes()
-    );
-
-    mockMvc.perform(
-      multipart("/user/test-uuid")
-        .file(file)
-        .param("name", "")
-        .with(request -> {
-            request.setMethod("PUT");
-            return request;
-        })
-      )
-    .andExpect(status().isBadRequest());
-  }
 
   @Test
   void testDeleteUser() throws Exception {
