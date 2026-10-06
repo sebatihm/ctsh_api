@@ -53,6 +53,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/mood/*").permitAll()
             .requestMatchers(HttpMethod.POST, "/mood/*").permitAll()
             .requestMatchers("/mood/**").hasRole("ADMIN")
+            .requestMatchers("/mail/**").permitAll()
             .requestMatchers("/uploads/**").permitAll()
             .requestMatchers("/login").permitAll()
             .requestMatchers("/error").permitAll()
