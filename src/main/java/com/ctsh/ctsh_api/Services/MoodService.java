@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.ctsh.ctsh_api.Dtos.MoodResponseDto;
 import com.ctsh.ctsh_api.Exceptions.BadRequestException;
 import com.ctsh.ctsh_api.Exceptions.ResourceNotFoundException;
+import com.ctsh.ctsh_api.Mappers.MoodMapper;
 import com.ctsh.ctsh_api.Models.Mood;
 import com.ctsh.ctsh_api.Repositories.MoodRepository;
 
@@ -18,26 +19,28 @@ public class MoodService {
   private static final Pattern VALID_NAME = Pattern.compile("^[a-z0-9_-]{1,50}$");
 
   private final MoodRepository moodRepository;
+  private final MoodMapper moodMapper;
 
-  public MoodService(MoodRepository moodRepository) {
+  public MoodService(MoodRepository moodRepository, MoodMapper moodMapper) {
     this.moodRepository = moodRepository;
+    this.moodMapper = moodMapper;
   }
 
   public List<MoodResponseDto> getAllMoods() {
     return moodRepository.findAll().stream()
-        .map(this::toResponseDto)
+        .map(moodMapper::toResponseDto)
         .toList();
   }
 
   public MoodResponseDto getMoodByName(String name) {
     String normalizedName = normalizeName(name);
-    return toResponseDto(findMoodByName(normalizedName));
+    return moodMapper.toResponseDto(findMoodByName(normalizedName));
   }
 
   public MoodResponseDto incrementMoodCount(String name) {
     String normalizedName = normalizeName(name);
     moodRepository.upsertIncrement(normalizedName);
-    return getMoodByName(normalizedName);
+    return moodMapper.toResponseDto(findMoodByName(normalizedName));
   }
 
   public void deleteMoodByName(String name) {
@@ -60,10 +63,4 @@ public class MoodService {
     return normalized;
   }
 
-  private MoodResponseDto toResponseDto(Mood mood) {
-    MoodResponseDto dto = new MoodResponseDto();
-    dto.setName(mood.getName());
-    dto.setCount(mood.getCount());
-    return dto;
-  }
 }

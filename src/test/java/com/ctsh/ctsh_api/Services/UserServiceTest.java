@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +31,7 @@ import com.ctsh.ctsh_api.Dtos.UserResponseDto;
 import com.ctsh.ctsh_api.Dtos.Validation.UserRequestDto;
 import com.ctsh.ctsh_api.Exceptions.ResourceAlreadyExistsException;
 import com.ctsh.ctsh_api.Exceptions.ResourceNotFoundException;
+import com.ctsh.ctsh_api.Mappers.UserMapper;
 import com.ctsh.ctsh_api.Models.User;
 import com.ctsh.ctsh_api.Models.Enum.Role;
 import com.ctsh.ctsh_api.Repositories.UserRepository;
@@ -42,6 +44,8 @@ class UserServiceTest {
 
   @Mock
   private PasswordEncoder passwordEncoder;
+
+  private UserMapper userMapper;
 
   @Mock
   private FileService fileService;
@@ -69,6 +73,16 @@ class UserServiceTest {
 
     SecurityContextHolder.getContext()
         .setAuthentication(authentication);
+  }
+  @BeforeEach
+  void setUp() {
+    userMapper = new UserMapper(fileService);
+    userService = new UserService(
+        userRepository,
+        passwordEncoder,
+        fileService,
+        userMapper
+    );
   }
 
   @AfterEach

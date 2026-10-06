@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.ctsh.ctsh_api.Dtos.MoodResponseDto;
 import com.ctsh.ctsh_api.Exceptions.BadRequestException;
 import com.ctsh.ctsh_api.Exceptions.ResourceNotFoundException;
+import com.ctsh.ctsh_api.Mappers.MoodMapper;
 import com.ctsh.ctsh_api.Models.Mood;
 import com.ctsh.ctsh_api.Repositories.MoodRepository;
 
@@ -25,6 +27,8 @@ public class MoodServiceTest {
   @Mock 
   private MoodRepository moodRepository;
 
+  private MoodMapper moodMapper;
+
   @InjectMocks
   private MoodService moodService;
 
@@ -33,6 +37,15 @@ public class MoodServiceTest {
     mood.setName(name);
     mood.setCount(count);
     return mood;
+  }
+
+  @BeforeEach
+  void setUp() {
+    moodMapper = new MoodMapper();
+    moodService = new MoodService(
+        moodRepository,
+        moodMapper
+    );
   }
   
   @Test 
