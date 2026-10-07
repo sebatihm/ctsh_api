@@ -15,6 +15,7 @@ import com.ctsh.ctsh_api.Dtos.UserResponseDto;
 import com.ctsh.ctsh_api.Dtos.Validation.UserRequestDto;
 import com.ctsh.ctsh_api.Exceptions.ResourceAlreadyExistsException;
 import com.ctsh.ctsh_api.Exceptions.ResourceNotFoundException;
+import com.ctsh.ctsh_api.Mappers.UserMapper;
 import com.ctsh.ctsh_api.Models.Enum.Role;
 import com.ctsh.ctsh_api.Models.User;
 import com.ctsh.ctsh_api.Repositories.UserRepository;
@@ -23,28 +24,28 @@ import com.ctsh.ctsh_api.Repositories.UserRepository;
 public class UserService implements UserDetailsService {
 
   private final UserRepository userRepository;
-
   private final PasswordEncoder passwordEncoder;
-
   private final FileService fileService;
+  private final UserMapper userMapper;
 
-  public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, FileService fileService) {
+  public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, FileService fileService, UserMapper userMapper) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.fileService = fileService;
+    this.userMapper = userMapper;
   }
 
   public List<UserResponseDto> getAllUsers() {
     return userRepository.findAll()
         .stream()
-        .map(this::toResponseDto)
+        .map(userMapper::toResponseDto)
         .toList();
   }
 
   public UserResponseDto getUserById(String uuid) {
     User user = findUser(uuid);
     requireSameUserOrAdmin(user.getEmail());
-    return toResponseDto(user);
+    return userMapper.toResponseDto(user);
   }
 
   public UserResponseDto createUser(UserRequestDto dto) {
@@ -64,7 +65,7 @@ public class UserService implements UserDetailsService {
     user.setPassword(passwordHash);
     user.setProfilePicture(profilePicture);
     user.setRole(Role.USER);
-    return toResponseDto(userRepository.save(user));
+    return userMapper.toResponseDto(userRepository.save(user));
   }
 
   public UserResponseDto updateUser(String uuid, UserRequestDto dto) {
@@ -82,7 +83,7 @@ public class UserService implements UserDetailsService {
       user.setName(dto.name());
     }
 
-    return toResponseDto(userRepository.save(user));
+    return userMapper.toResponseDto(userRepository.save(user));
   }
 
   public void deleteUser(String uuid) {
@@ -101,15 +102,6 @@ public class UserService implements UserDetailsService {
         .orElseThrow(() -> new ResourceNotFoundException("User not found with uuid: " + uuid));
   }
 
-  private UserResponseDto toResponseDto(User user) {
-    UserResponseDto dto = new UserResponseDto();
-    dto.setUuid(user.getUuid());
-    dto.setName(user.getName());
-    dto.setEmail(user.getEmail());
-    dto.setRole(user.getRole());
-    dto.setProfilePicture(fileService.getPublicUrl(user.getProfilePicture()));
-    return dto;
-  }
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

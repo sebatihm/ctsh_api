@@ -1,6 +1,6 @@
 # CTSH_API
 
-A Spring Boot REST API for user management, global mood counters and JWT-based authentication made for the ctsh proyect, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
+A Spring Boot REST API for user management, global mood counters, an internal user-to-user message box and JWT-based authentication made for the ctsh proyect, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
 
 ## Tech stack
 
@@ -38,6 +38,26 @@ A Spring Boot REST API for user management, global mood counters and JWT-based a
 
 The API is served under the `/api` context path. There is no CORS configuration: the auth cookie is `SameSite=Strict`, which only works same-origin. In production, serve the frontend and proxy `/api` to this service from a single public origin (for example nginx in the frontend container), so the browser only ever talks to one host.
 
+`spring.jpa.hibernate.ddl-auto` is `update`, so the tables are created and evolved automatically; you do not need to run any migration.
+
+## Response format
+
+Every successful response is a JSON envelope:
+
+```json
+{ "timestamp": "...", "status": 200, "message": "Login successful", "data": { } }
+```
+
+`data` carries the resource; it is `null` when there is no body (e.g. login/logout).
+
+Errors use the matching `ApiError` shape:
+
+```json
+{ "timestamp": "...", "status": 400, "error": "Bad Request", "message": "Invalid mood name: ...", "path": "/api/mood/..." }
+```
+
+Bean-validation failures return `400` with an `errors` array instead of `ApiError`: a list of `{ "field", "message" }` pairs, one per failed constraint.
+
 ## Endpoints
 
 | Method | Path    | Access      | Description            |
@@ -53,9 +73,16 @@ The API is served under the `/api` context path. There is no CORS configuration:
 | GET    | `/api/mood/{name}` | Public | Get one mood by name |
 | POST   | `/api/mood/{name}` | Public | Increment a mood counter, creating it on first use |
 | DELETE | `/api/mood/{name}` | ADMIN | Delete a mood, returns `204` |
+| GET    | `/api/mail` | Public | List all mails |
+| GET    | `/api/mail/{uuid}` | Public | Get one mail by id |
+| POST   | `/api/mail` | Public | Create a mail, JSON body |
+| PUT    | `/api/mail/{uuid}` | Public | Update a mail, JSON body |
+| DELETE | `/api/mail/{uuid}` | Public | Delete a mail, returns `204` |
 | GET    | `/api/uploads/{file}` | Public | Serve a stored profile picture |
 
 `/api/logout` is a controller endpoint (`AuthController.logout`), not Spring Security's `LogoutFilter`, which is explicitly disabled in `SecurityConfig.java`. The route requires authentication, so logout answers `401` unless the request carries a valid token. `JwtAuthenticationFilter` does clear the cookie as a side effect when a token is present but expired or malformed, but the response is still `401`, so a client with a dead token never gets a clean `200` out of logout.
+
+The JWT is read from the `jwt` cookie first, but an `Authorization: Bearer <token>` header also works and takes precedence. Either way the app is stateless; nothing is stored server-side.
 
 Creating and updating users take `multipart/form-data`, not JSON. See [Profile pictures](#profile-pictures) for the fields.
 
@@ -69,6 +96,19 @@ The increment is a single `INSERT ... ON DUPLICATE KEY UPDATE count = count + 1`
 
 Names are lowercased and must then match `^[a-z0-9_-]{1,50}$` — ASCII only, no spaces and no accents. Anything else is a `400` before it reaches the database. `GET /api/mood/Happy` and `GET /api/mood/happy` are the same request, but `GET /api/mood/very%20happy` is not a valid name at all.
 
+## Mails
+
+The `/api/mail` routes are an internal message box: a `Mail` has a sender user, a receiver user and a free-text message, all persisted with JPA. Sending a "mail" here only means writing a row — nothing is emailed or queued.
+
+| Field | Create | Update | Rules |
+|-------|--------|--------|-------|
+| `fromUuid` | required | optional | must reference an existing user |
+| `toUuid` | required | optional | must reference an existing user |
+| `message` | required | optional | non-blank on create |
+
+Unknown sender/receiver uuids are a `404`; body fields are `@NotBlank` on create. Responses use `MailResponseDto` (`uuid`, `from`, `to`, `message`), where `from`/`to` are the full `UserResponseDto` of each side.
+
+
 ## Profile pictures
 
 `POST /api/user` and `PUT /api/user/{uuid}` bind a `multipart/form-data` body to the `UserRequestDto` record, so every field is a separate form part:
@@ -76,17 +116,18 @@ Names are lowercased and must then match `^[a-z0-9_-]{1,50}$` — ASCII only, no
 | Part | Create | Update | Rules |
 |------|--------|--------|-------|
 | `name` | required | optional | non-blank on create |
-| `email` | required | optional | must be a valid email; must not belong to another user |
+| `email` | required | ignored | must be a valid email and not belong to another user on create; **not applied on update** |
 | `password` | required | ignored | at least 8 characters, hashed with the pepper |
 | `profilePicture` | required | optional | image, see below |
+
+On update only `name` and `profilePicture` are actually written; `email` and `password` are silently ignored, so a user can never be renamed by email or re-hash their password through `PUT`.
 
 Notes:
 
 - A user is always created with the `USER` role.
 - `UserResponseDto.profilePicture` is an absolute, browser-ready URL built by `FileService.getPublicUrl` — for example `http://localhost:8080/api/uploads/profiles/9f1c….png`. The client must not construct it. It is `null` when the user has no picture, so "no photo" and "photo failed to load" stay distinguishable.
 
-
-Validation happens in `FileService`: the size must be under 5 MB, the content type must start with `image/`, and the extension must be one of `jpg`, `jpeg`, `png`, `webp`, `gif`.
+Validation happens partly in `FileService`: the size must be under 5 MB, the content type must start with `image/`, and the extension must be one of `jpg`, `jpeg`, `png`, `webp`, `gif`.
 
 Files are written to `uploads/profiles/<random-uuid>.<ext>` and served as static resources by `WebConfig`, which maps `/uploads/**` to the `file:uploads/` location. Two consequences worth knowing:
 
@@ -108,7 +149,6 @@ Database and security settings live in `src/main/resources/application.propertie
 `FileService.getPublicUrl` assembles the profile picture URL from all of them: `{app.url.backend}{server.servlet.context-path}{app.uploads.url-path}/profiles/{file}`, so the four parts cannot drift apart.
 
 `app.url.backend` has to be the **public** origin, because the URL ends up in a JSON response that the end user's browser fetches. Do not put the container's internal address there. In production, where nginx serves the frontend and proxies `/api` to this service, set it to the public origin (`https://miapp.com`) so the browser only ever talks to one host.
-
 
 ### Auth cookie
 
@@ -139,3 +179,5 @@ Skipping step 3 turns cookie-based auth into a CSRF vulnerability.
 ```sh
 ./mvnw test
 ```
+
+Tests run against an embedded H2 database (MySQL compatibility mode), so no MySQL instance is needed. The suite covers controllers, services and repositories, plus full `@SpringBootTest` integration tests for `User`, `Mood` and `Mail` flows.
