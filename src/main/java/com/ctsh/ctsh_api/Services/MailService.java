@@ -55,7 +55,7 @@ public class MailService {
       mail.setTo(getUser(dto.toUuid()));
     }
 
-    if (dto.message() != null) {
+    if (dto.message() != null && !dto.message().isBlank()) {
       mail.setMessage(dto.message());
     }
     return mailMapper.toResponseDto(mailRepository.save(mail));
