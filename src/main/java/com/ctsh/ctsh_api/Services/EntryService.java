@@ -45,8 +45,6 @@ public class EntryService {
       entries = entryRepository.findByUser(user);
     }
 
-
-
     return entries
       .stream()
       .map(entryMapper::toResponseDto)
@@ -78,7 +76,7 @@ public class EntryService {
     Entry entry = findEntryByUuid(uuid);
     validateEntryOwnership(entry);
 
-    if (entryRequestDto.description() != null || !entryRequestDto.description().isBlank()) {
+    if (entryRequestDto.description() != null && !entryRequestDto.description().isBlank()) {
       entry.setDescription(entryRequestDto.description());
     }
 
