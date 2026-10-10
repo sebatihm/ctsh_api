@@ -48,7 +48,7 @@ public class EntryControllerTest {
     EntryResponseDto entry = new EntryResponseDto();
     entry.setUuid("uuid-1234");
     entry.setDate("10/10/2010");
-    entry.setUserUuid(user);
+    entry.setUser(user);
     entry.setDescription("This is a test entry.");
     return entry;
   }

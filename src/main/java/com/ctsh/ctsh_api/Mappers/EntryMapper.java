@@ -22,7 +22,7 @@ public class EntryMapper {
 
     dto.setUuid(entry.getUuid());
     dto.setDate(entry.getDate().format(formatter));
-    dto.setUserUuid(userMapper.toResponseDto(entry.getUser()));
+    dto.setUser(userMapper.toResponseDto(entry.getUser()));
     dto.setDescription(entry.getDescription());
 
     return dto;

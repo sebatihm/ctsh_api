@@ -6,6 +6,6 @@ import lombok.Data;
 public class EntryResponseDto {
   private String uuid;
   private String date;
-  private UserResponseDto userUuid;
+  private UserResponseDto user;
   private String description;
 }

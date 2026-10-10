@@ -222,7 +222,7 @@ public class EntryServiceTest {
 
     assertEquals("02/10/1968", result.getDate());
     assertEquals("Test Entry", result.getDescription());
-    assertEquals(user.getUuid(), result.getUserUuid().getUuid());
+    assertEquals(user.getUuid(), result.getUser().getUuid());
 
   }
 
@@ -267,7 +267,7 @@ public class EntryServiceTest {
     EntryResponseDto result = entryService.updateEntry(entry.getUuid(),entryDto);
 
     assertEquals("11/05/2001", result.getDate());
-    assertEquals(user.getUuid(), result.getUserUuid().getUuid());
+    assertEquals(user.getUuid(), result.getUser().getUuid());
 
   }
 
@@ -314,7 +314,7 @@ public class EntryServiceTest {
     EntryResponseDto result = entryService.updateEntry("entry-uuid", new EntryRequestDto( LocalDate.of(2001, 5, 11), null));
 
     assertEquals("11/05/2001", result.getDate());
-    assertEquals(user.getUuid(), result.getUserUuid().getUuid());
+    assertEquals(user.getUuid(), result.getUser().getUuid());
 
   }
 
