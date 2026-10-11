@@ -1,6 +1,6 @@
 # CTSH_API
 
-A Spring Boot REST API for user management, global mood counters, an internal user-to-user message box, a per-user entries resource and JWT-based authentication made for the ctsh proyect, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
+A Spring Boot REST API for user management, global mood counters, an internal user-to-user message box, a per-user entries resource and JWT-based authentication made for the ctsh project, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
 
 ## Tech stack
 
@@ -76,6 +76,8 @@ Unhandled errors (including plain `404`s) are normalized to the same `ApiError` 
 | POST   | `/api/mood/{name}` | Public | Increment a mood counter, creating it on first use |
 | DELETE | `/api/mood/{name}` | ADMIN | Delete a mood, returns `204` |
 | GET    | `/api/mail` | Public | List all mails |
+| GET    | `/api/mail/from/{uuid}` | Public | List mails sent by a user |
+| GET    | `/api/mail/to/{uuid}` | Public | List mails received by a user |
 | GET    | `/api/mail/{uuid}` | Public | Get one mail by id |
 | POST   | `/api/mail` | Authenticated | Create a mail, JSON body |
 | PUT    | `/api/mail/{uuid}` | Authenticated | Update a mail, JSON body |
@@ -102,7 +104,9 @@ Creating and updating users take `multipart/form-data`, not JSON. See [Profile p
 
 The increment is a single `INSERT ... ON DUPLICATE KEY UPDATE count = count + 1` (`MoodRepository.upsertIncrement`). One statement is what makes it race-free: two simultaneous first votes for a new name cannot both insert, and the loser is folded into the same row atomically instead of failing on the `UNIQUE` index and needing a retry.
 
-Names are lowercased and must then match `^[a-z0-9_-]{1,50}$` — ASCII only, no spaces and no accents. Anything else is a `400` before it reaches the database. `GET /api/mood/Happy` and `GET /api/mood/happy` are the same request, but `GET /api/mood/very%20happy` is not a valid name at all.
+Names are trimmed, Unicode-normalized, lowercased and must then match `^[\p{L}\p{Nd} _-]{1,50}$` — letters (accents allowed), numbers, spaces, underscores and hyphens. Anything else is a `400` before it reaches the database. So `GET /api/mood/Happy` and `GET /api/mood/happy` are the same request, and `GET /api/mood/very happy` is now a valid name.
+
+Because names live in the URL path, the client must percent-encode them: a space is `%20` and accents are UTF-8 bytes, so `very happy` becomes `/api/mood/very%20happy` and `café` becomes `/api/mood/caf%C3%A9`.
 
 ## Mails
 
@@ -116,7 +120,7 @@ The `/api/mail` routes are an internal message box: a `Mail` has a sender user, 
 
 Unknown sender/receiver uuids are a `404`; body fields are `@NotBlank` on create. Responses use `MailResponseDto` (`uuid`, `from`, `to`, `message`), where `from`/`to` are the full `UserResponseDto` of each side.
 
-The create/update/delete routes require an authenticated caller; only the two `GET` routes are public.
+The create/update/delete routes require an authenticated caller; the four `GET` routes are public. `GET /api/mail/from/{uuid}` and `GET /api/mail/to/{uuid}` filter by sender and receiver respectively (unknown uuids are a `404`).
 
 ## Entries
 
@@ -142,7 +146,7 @@ On update only `name` and `profilePicture` are actually written; `email` and `pa
 
 Notes:
 
-- A user is always created with the `USER` role.
+- A user is always created with the `USER` role. `UserResponseDto` exposes `uuid`, `name`, `email`, `role` and `profilePicture`.
 - `UserResponseDto.profilePicture` is an absolute, browser-ready URL built by `FileService.getPublicUrl` — for example `http://localhost:8080/api/uploads/profiles/9f1c….png`. The client must not construct it. It is `null` when the user has no picture, so "no photo" and "photo failed to load" stay distinguishable.
 
 Validation happens partly in `FileService`: the size must be under 5 MB, the content type must start with `image/`, and the extension must be one of `jpg`, `jpeg`, `png`, `webp`, `gif`.
@@ -155,6 +159,17 @@ Files are written to `uploads/profiles/<random-uuid>.<ext>` and served as static
 ## Configuration
 
 Database and security settings live in `src/main/resources/application.properties`.
+
+### Security and multipart
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `app.security.pepper` | `${CTSH_PEPPER:change-me-pepper}` | Prepended to the password before BCrypt hashing |
+| `app.jwt.secret` | `${CTSH_JWT_SECRET:…}` | HMAC secret used to sign JWT tokens |
+| `spring.servlet.multipart.max-file-size` | `5MB` | Max size of a single uploaded file |
+| `spring.servlet.multipart.max-request-size` | `6MB` | Max size of a whole multipart request |
+
+Both secrets ship with insecure dev defaults; override them in production.
 
 ### Uploads and public URL
 
