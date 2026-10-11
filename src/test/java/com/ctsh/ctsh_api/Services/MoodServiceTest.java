@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.ctsh.ctsh_api.Dtos.MoodResponseDto;
 import com.ctsh.ctsh_api.Exceptions.BadRequestException;
 import com.ctsh.ctsh_api.Exceptions.ResourceNotFoundException;
+import com.ctsh.ctsh_api.Mappers.MoodMapper;
 import com.ctsh.ctsh_api.Models.Mood;
 import com.ctsh.ctsh_api.Repositories.MoodRepository;
 
@@ -25,6 +27,8 @@ public class MoodServiceTest {
   @Mock 
   private MoodRepository moodRepository;
 
+  private MoodMapper moodMapper;
+
   @InjectMocks
   private MoodService moodService;
 
@@ -33,6 +37,15 @@ public class MoodServiceTest {
     mood.setName(name);
     mood.setCount(count);
     return mood;
+  }
+
+  @BeforeEach
+  void setUp() {
+    moodMapper = new MoodMapper();
+    moodService = new MoodService(
+        moodRepository,
+        moodMapper
+    );
   }
   
   @Test 
@@ -70,6 +83,13 @@ public class MoodServiceTest {
   }
 
   @Test
+  void testIncrementMoodCountWithInvalidCharacters() {
+    assertThrows(BadRequestException.class, () -> {
+      moodService.incrementMoodCount("no/slash");
+    });
+  }
+
+  @Test
   void testIncrementMoodCount() {
     when(moodRepository.findByName("happy")).thenReturn(java.util.Optional.of(createTestMood("happy", 10)));
     
@@ -77,5 +97,44 @@ public class MoodServiceTest {
     assertEquals("happy", result.getName());
     verify(moodRepository)
       .upsertIncrement("happy");
+  }
+
+  @Test
+  void testIncrementMoodCountAcceptsSpacesAndAccents() {
+    when(moodRepository.findByName("muy felíz")).thenReturn(java.util.Optional.of(createTestMood("muy felíz", 3)));
+
+    MoodResponseDto result = moodService.incrementMoodCount("  Muy Felíz  ");
+
+    assertEquals("muy felíz", result.getName());
+    verify(moodRepository).upsertIncrement("muy felíz");
+  }
+
+  @Test
+  void testIncrementMoodCountKeepsInternalSpaces() {
+    when(moodRepository.findByName("very  happy")).thenReturn(java.util.Optional.of(createTestMood("very  happy", 1)));
+
+    MoodResponseDto result = moodService.incrementMoodCount("Very  Happy");
+
+    assertEquals("very  happy", result.getName());
+    verify(moodRepository).upsertIncrement("very  happy");
+  }
+
+  @Test
+  void testNormalizeNameAppliesUnicodeNfc() {
+    when(moodRepository.findByName("café")).thenReturn(java.util.Optional.of(createTestMood("café", 1)));
+
+    MoodResponseDto result = moodService.getMoodByName("Cafe\u0301");
+
+    assertEquals("café", result.getName());
+  }
+
+  @Test
+  void testGetMoodByNameWithSpaces() {
+    when(moodRepository.findByName("very happy")).thenReturn(java.util.Optional.of(createTestMood("very happy", 7)));
+
+    MoodResponseDto result = moodService.getMoodByName("Very Happy");
+
+    assertEquals("very happy", result.getName());
+    assertEquals(7, result.getCount());
   }
 }

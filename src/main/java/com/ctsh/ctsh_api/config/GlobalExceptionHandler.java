@@ -12,6 +12,7 @@ import jakarta.validation.ConstraintViolationException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -55,5 +56,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleMaxUploadSize(MaxUploadSizeExceededException ex, HttpServletRequest request) {
         ApiError body = ApiError.of(HttpStatus.CONTENT_TOO_LARGE, ex.getMessage(), request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(body);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        ApiError body = ApiError.of(
+            HttpStatus.BAD_REQUEST,
+            "Invalid request body. Check the JSON structure and field formats.",
+            request.getRequestURI()
+        );
+
+        return ResponseEntity.badRequest().body(body);
     }
 }

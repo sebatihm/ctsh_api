@@ -99,6 +99,18 @@ public class MoodIntegrationTest {
   }
 
   @Test
+  void testMoodEndpointWithSpacesAndAccents() throws Exception {
+
+    mockMvc.perform(
+      post("/mood/{name}", "muy felíz")
+        .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isOk())
+    .andExpect(jsonPath("$.data.name").value("muy felíz"))
+    .andExpect(jsonPath("$.data.count").value(1))
+    .andReturn();
+  }
+
+  @Test
   void testGetMood() throws Exception {
     MvcResult loginResult = testUserLogin("USER");
     String token = loginResult.getResponse().getCookie("jwt").getValue();
