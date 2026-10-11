@@ -1,6 +1,6 @@
 # CTSH_API
 
-A Spring Boot REST API for user management, global mood counters, an internal user-to-user message box and JWT-based authentication made for the ctsh proyect, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
+A Spring Boot REST API for user management, global mood counters, an internal user-to-user message box, a per-user entries resource and JWT-based authentication made for the ctsh proyect, built with Spring Security and MySQL. Users are created and updated through `multipart/form-data` so a profile picture can be uploaded with the account.
 
 ## Tech stack
 
@@ -58,6 +58,8 @@ Errors use the matching `ApiError` shape:
 
 Bean-validation failures return `400` with an `errors` array instead of `ApiError`: a list of `{ "field", "message" }` pairs, one per failed constraint.
 
+Unhandled errors (including plain `404`s) are normalized to the same `ApiError` shape by `CustomErrorController`, which also maps the status code and hides internal messages behind `"Unexpected server error"` for `5xx`.
+
 ## Endpoints
 
 | Method | Path    | Access      | Description            |
@@ -75,10 +77,16 @@ Bean-validation failures return `400` with an `errors` array instead of `ApiErro
 | DELETE | `/api/mood/{name}` | ADMIN | Delete a mood, returns `204` |
 | GET    | `/api/mail` | Public | List all mails |
 | GET    | `/api/mail/{uuid}` | Public | Get one mail by id |
-| POST   | `/api/mail` | Public | Create a mail, JSON body |
-| PUT    | `/api/mail/{uuid}` | Public | Update a mail, JSON body |
-| DELETE | `/api/mail/{uuid}` | Public | Delete a mail, returns `204` |
-| GET    | `/api/uploads/{file}` | Public | Serve a stored profile picture |
+| POST   | `/api/mail` | Authenticated | Create a mail, JSON body |
+| PUT    | `/api/mail/{uuid}` | Authenticated | Update a mail, JSON body |
+| DELETE | `/api/mail/{uuid}` | Authenticated | Delete a mail, returns `204` |
+| GET    | `/api/entry` | Public | List all entries |
+| GET    | `/api/entry/user/{userUuid}` | Public | List a user's entries |
+| GET    | `/api/entry/{uuid}` | Public | Get one entry by id |
+| POST   | `/api/entry` | Authenticated | Create an entry for the caller, JSON body |
+| PUT    | `/api/entry/{uuid}` | Owner or ADMIN | Update an entry, JSON body |
+| DELETE | `/api/entry/{uuid}` | Owner or ADMIN | Delete an entry, returns `204` |
+| GET    | `/api/uploads/{file}` | Public | Serve a stored profile picture (`/uploads/profiles/{file}`) |
 
 `/api/logout` is a controller endpoint (`AuthController.logout`), not Spring Security's `LogoutFilter`, which is explicitly disabled in `SecurityConfig.java`. The route requires authentication, so logout answers `401` unless the request carries a valid token. `JwtAuthenticationFilter` does clear the cookie as a side effect when a token is present but expired or malformed, but the response is still `401`, so a client with a dead token never gets a clean `200` out of logout.
 
@@ -107,6 +115,16 @@ The `/api/mail` routes are an internal message box: a `Mail` has a sender user, 
 | `message` | required | optional | non-blank on create |
 
 Unknown sender/receiver uuids are a `404`; body fields are `@NotBlank` on create. Responses use `MailResponseDto` (`uuid`, `from`, `to`, `message`), where `from`/`to` are the full `UserResponseDto` of each side.
+
+The create/update/delete routes require an authenticated caller; only the two `GET` routes are public.
+
+## Entries
+
+`/api/entry` is a per-user diary: an `Entry` has an owning `User`, a free-text `description` and a `date`. Create/update take a JSON body (`EntryRequestDto`): on create `date` and `description` are required. The date is serialized and accepted as `dd/MM/yyyy`. `POST /api/entry` always attaches the entry to the authenticated caller — the owner is never taken from the body.
+
+`PUT`/`DELETE` require ownership (or `ADMIN`), enforced in `EntryService.validateEntryOwnership`, which answers `403` otherwise. The `GET` routes, however, perform **no ownership check**: `GET /api/entry`, `GET /api/entry/{uuid}` and `GET /api/entry/user/{userUuid}` are public and return every entry, so treat entry contents as non-private.
+
+Responses use `EntryResponseDto` (`uuid`, `date`, `description`, `user`), where `user` is the full `UserResponseDto`.
 
 
 ## Profile pictures
@@ -180,4 +198,4 @@ Skipping step 3 turns cookie-based auth into a CSRF vulnerability.
 ./mvnw test
 ```
 
-Tests run against an embedded H2 database (MySQL compatibility mode), so no MySQL instance is needed. The suite covers controllers, services and repositories, plus full `@SpringBootTest` integration tests for `User`, `Mood` and `Mail` flows.
+Tests run against an embedded H2 database (MySQL compatibility mode), so no MySQL instance is needed. The suite covers controllers, services and repositories, plus full `@SpringBootTest` integration tests for `User`, `Mood`, `Mail` and `Entry` flows.
