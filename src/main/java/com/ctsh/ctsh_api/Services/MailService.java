@@ -36,6 +36,22 @@ public class MailService {
       .toList();
   }
 
+  public List<MailResponseDto> getMailsByUserUuid(String uuid, boolean isFrom) {
+    User user = getUser(uuid);
+
+    List<Mail> mails;
+    
+    if (!isFrom) {
+      mails = mailRepository.findByTo_Uuid(user.getUuid());
+    } else {
+      mails = mailRepository.findByFrom_Uuid(user.getUuid());
+    }
+    return mails
+      .stream()
+      .map(mailMapper::toResponseDto)
+      .toList();
+  }
+
   public MailResponseDto createMail(MailRequestDto dto) {
     Mail mail = new Mail();
     mail.setFrom(getUser(dto.fromUuid()));

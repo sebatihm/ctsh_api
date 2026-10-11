@@ -68,6 +68,25 @@ public class MailRepositoryTest {
     assertTrue(foundMail != null);
   }
 
+  @Test
+  void testFindByFromUuid() {
+    createTestEmailAndUsers();
+
+    Mail mail = mailRepository.findAll().get(0);
+    String senderUuid = mail.getFrom().getUuid();
+
+    assertEquals(1, mailRepository.findByFrom_Uuid(senderUuid).size());
+  }
+
+  @Test
+  void testFindByToUuid() {
+    createTestEmailAndUsers();
+
+    Mail mail = mailRepository.findAll().get(0);
+    String recipientUuid = mail.getTo().getUuid();
+
+    assertEquals(1, mailRepository.findByTo_Uuid(recipientUuid).size());
+  }
 
 
   @Test

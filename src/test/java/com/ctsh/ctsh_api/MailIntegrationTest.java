@@ -104,6 +104,60 @@ public class MailIntegrationTest {
   }
 
   @Test
+  void testGetMailsByFromUser() throws Exception {
+    User testFromUser = createUserTest("USER", "from@example.com");
+    User testToUser = createUserTest("USER", "to@example.com");
+    createTestMail(testFromUser, testToUser, "Test Body 1");
+    createTestMail(testFromUser, testFromUser, "Test Body 2");
+    createTestMail(testToUser, testFromUser, "Test Body 3");
+    
+    mockMvc.perform(
+      get("/mail/from/{uuid}", testFromUser.getUuid())
+        .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isOk())
+    .andExpect(jsonPath("$.data.length()").value(2))
+    .andExpect(jsonPath("$.data[0].from.email").value("from@example.com"))
+    .andExpect(jsonPath("$.data[1].from.email").value("from@example.com"))
+    .andReturn();
+  }
+
+  @Test
+  void testGetMailsByFromUserNotFound() throws Exception {
+    mockMvc.perform(
+      get("/mail/from/non-existent-uuid")
+        .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isNotFound())
+    .andReturn();
+  }
+
+  @Test
+  void testGetMailsByToUser() throws Exception {
+    User testFromUser = createUserTest("USER", "from@example.com");
+    User testToUser = createUserTest("USER", "to@example.com");
+    createTestMail(testFromUser, testToUser, "Test Body 1");
+    createTestMail(testFromUser, testFromUser, "Test Body 2");
+    createTestMail(testToUser, testToUser, "Test Body 3");
+    
+    mockMvc.perform(
+      get("/mail/to/{uuid}", testToUser.getUuid())
+        .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isOk())
+    .andExpect(jsonPath("$.data.length()").value(2))
+    .andExpect(jsonPath("$.data[0].to.email").value("to@example.com"))
+    .andExpect(jsonPath("$.data[1].to.email").value("to@example.com"))
+    .andReturn();
+  }
+
+  @Test
+  void testGetMailsByToUserNotFound() throws Exception {
+    mockMvc.perform(
+      get("/mail/to/non-existent-uuid")
+        .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isNotFound())
+    .andReturn();
+  }
+
+  @Test
   void testGetMail() throws Exception {
     User testFromUser = createUserTest("USER", "from@example.com");
     User testToUser = createUserTest("USER", "to@example.com");
