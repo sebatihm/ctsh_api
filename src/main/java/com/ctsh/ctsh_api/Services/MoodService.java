@@ -1,5 +1,6 @@
 package com.ctsh.ctsh_api.Services;
 
+import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -16,7 +17,7 @@ import com.ctsh.ctsh_api.Repositories.MoodRepository;
 @Service
 public class MoodService {
 
-  private static final Pattern VALID_NAME = Pattern.compile("^[a-z0-9_-]{1,50}$");
+  private static final Pattern VALID_NAME = Pattern.compile("^[\\p{L}\\p{Nd} _-]{1,50}$");
 
   private final MoodRepository moodRepository;
   private final MoodMapper moodMapper;
@@ -56,9 +57,9 @@ public class MoodService {
   }
 
   private String normalizeName(String name) {
-    String normalized = name.trim().toLowerCase(Locale.ROOT);
+    String normalized = Normalizer.normalize(name.trim(), Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
     if (!VALID_NAME.matcher(normalized).matches()) {
-      throw new BadRequestException("Invalid mood name: must be 1-50 characters, letters, numbers, underscores, or hyphens.");
+      throw new BadRequestException("Invalid mood name: must be 1-50 characters: letters (accents allowed), numbers, spaces, underscores or hyphens.");
     }
     return normalized;
   }

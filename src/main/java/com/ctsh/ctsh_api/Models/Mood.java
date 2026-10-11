@@ -1,5 +1,7 @@
 package com.ctsh.ctsh_api.Models;
 
+import org.hibernate.annotations.Collate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -15,6 +17,7 @@ public class Mood {
   @Getter @Setter
   private String uuid;
 
+  @Collate("utf8mb4_bin")
   @Column (nullable = false, unique = true, length = 50)
   @Getter @Setter
   private String name;
