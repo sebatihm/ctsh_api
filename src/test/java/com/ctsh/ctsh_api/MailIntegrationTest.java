@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -81,10 +80,9 @@ public class MailIntegrationTest {
     return mail;
   }
 
-  @BeforeEach
-  private void setup() throws Exception {
+  private MvcResult login() throws Exception {
     User testUser = createUserTest("USER", "test@example.com");
-    loginTestUser(testUser);
+    return loginTestUser(testUser);
   }
 
   @Test
@@ -132,6 +130,7 @@ public class MailIntegrationTest {
 
   @Test
   void testCreateMail() throws Exception {
+    MvcResult result = login();
     User testFromUser = createUserTest("USER", "from@example.com");
     User testToUser = createUserTest("USER", "to@example.com");
     
@@ -148,6 +147,7 @@ public class MailIntegrationTest {
       post("/mail")
         .contentType(MediaType.APPLICATION_JSON)
         .content(body)
+        .cookie(result.getResponse().getCookie("jwt"))
     ).andExpect(status().isCreated())
     .andExpect(jsonPath("$.data.message").value("Test Body 1"))
     .andExpect(jsonPath("$.data.from.uuid").value(testFromUser.getUuid()))
@@ -156,7 +156,28 @@ public class MailIntegrationTest {
   }
 
   @Test
+  void testCreateMailWithoutAuthentication() throws Exception {
+    
+    String body = """
+    {
+        "message": "Test Body 1",
+        "fromUuid": "%s",
+        "toUuid": "%s"
+    }
+    """.formatted("example-from-uuid", "example-to-uuid");
+
+
+    mockMvc.perform(
+      post("/mail")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(body)
+    ).andExpect(status().isUnauthorized())
+    .andReturn();
+  }
+
+  @Test
   void testCreateMailWithNonexistentFromUser() throws Exception {
+    MvcResult result = login();
     User testFromUser = createUserTest("USER", "from@example.com");
     
     String body = """
@@ -172,12 +193,14 @@ public class MailIntegrationTest {
       post("/mail")
         .contentType(MediaType.APPLICATION_JSON)
         .content(body)
+        .cookie(result.getResponse().getCookie("jwt"))
     ).andExpect(status().isNotFound())
     .andReturn();
   }
 
   @Test
   void testCreateMailWithInvalidData() throws Exception {
+    MvcResult result = login();
     User testFromUser = createUserTest("USER", "from@example.com");
     User testToUser = createUserTest("USER", "to@example.com");
     
@@ -193,12 +216,14 @@ public class MailIntegrationTest {
       post("/mail")
         .contentType(MediaType.APPLICATION_JSON)
         .content(body)
+        .cookie(result.getResponse().getCookie("jwt"))
     ).andExpect(status().isBadRequest())
     .andReturn();
   }
 
-    @Test
+  @Test
   void testUpdateMail() throws Exception {
+    MvcResult result = login();
     User testFromUser = createUserTest("USER", "from@example.com");
     User testToUser = createUserTest("USER", "to@example.com");
 
@@ -219,6 +244,7 @@ public class MailIntegrationTest {
       put("/mail/" + testMail.getUuid())
         .contentType(MediaType.APPLICATION_JSON)
         .content(body)
+        .cookie(result.getResponse().getCookie("jwt"))
     ).andExpect(status().isOk())
     .andExpect(jsonPath("$.data.message").value("Test Body 1"))
     .andExpect(jsonPath("$.data.from.email").value(testUpdateFromUser.getEmail()))
@@ -227,7 +253,27 @@ public class MailIntegrationTest {
   }
 
   @Test
+  void testUpdateMailWithoutAuthentication() throws Exception {
+    
+    String body = """
+    {
+        "fromUuid": "%s",
+        "toUuid": "%s"
+    }
+    """.formatted("existent_uuid", "existent_uuid");
+
+
+    mockMvc.perform(
+      put("/mail/existent_uuid")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(body)
+    ).andExpect(status().isUnauthorized())
+    .andReturn();
+  }
+
+  @Test
   void testUpdateNonExistentMail() throws Exception {
+    MvcResult result = login();
 
     User testUpdateFromUser = createUserTest("USER", "update-from@example.com");
     User testUpdateToUser = createUserTest("USER", "update-to@example.com");
@@ -243,6 +289,7 @@ public class MailIntegrationTest {
     mockMvc.perform(
       put("/mail/NONEXISTENT_UUID")
         .contentType(MediaType.APPLICATION_JSON)
+        .cookie(result.getResponse().getCookie("jwt"))
         .content(body)
     ).andExpect(status().isNotFound())
     .andReturn();
@@ -250,6 +297,7 @@ public class MailIntegrationTest {
 
   @Test
   void testUpdateMailWithNonExistentUser() throws Exception {
+    MvcResult result = login();
     User testFromUser = createUserTest("USER", "from@example.com");
     User testToUser = createUserTest("USER", "to@example.com");
 
@@ -269,12 +317,14 @@ public class MailIntegrationTest {
       put("/mail/" + testMail.getUuid())
         .contentType(MediaType.APPLICATION_JSON)
         .content(body)
+        .cookie(result.getResponse().getCookie("jwt"))
     ).andExpect(status().isNotFound())
     .andReturn();
   }
 
   @Test
   void testDeleteMail() throws Exception {
+    MvcResult result = login();
     User testFromUser = createUserTest("USER", "from@example.com");
     User testToUser = createUserTest("USER", "to@example.com");
 
@@ -283,16 +333,28 @@ public class MailIntegrationTest {
     mockMvc.perform(
       delete("/mail/" + testMail.getUuid())
         .contentType(MediaType.APPLICATION_JSON)
+        .cookie(result.getResponse().getCookie("jwt"))
     ).andExpect(status().isNoContent())
     .andReturn();
   }
 
   @Test
-  void testDeleteNonExistentMail() throws Exception {
+  void testDeleteMailWithoutAuthentication() throws Exception {
 
+    mockMvc.perform(
+      delete("/mail/existent_uuid")
+        .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isUnauthorized())
+    .andReturn();
+  }
+
+  @Test
+  void testDeleteNonExistentMail() throws Exception {
+    MvcResult result = login();
     mockMvc.perform(
       delete("/mail/NONEXISTENT_UUID")
         .contentType(MediaType.APPLICATION_JSON)
+        .cookie(result.getResponse().getCookie("jwt"))
     ).andExpect(status().isNotFound())
     .andReturn();
   }

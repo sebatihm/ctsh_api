@@ -14,7 +14,6 @@ import com.ctsh.ctsh_api.Exceptions.ResourceNotFoundException;
 import com.ctsh.ctsh_api.Mappers.EntryMapper;
 import com.ctsh.ctsh_api.Models.Entry;
 import com.ctsh.ctsh_api.Models.User;
-import com.ctsh.ctsh_api.Models.Enum.Role;
 import com.ctsh.ctsh_api.Repositories.EntryRepository;
 import com.ctsh.ctsh_api.Repositories.UserRepository;
 
@@ -32,30 +31,23 @@ public class EntryService {
   }
 
   public List<EntryResponseDto> getEntries() {
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    return entryRepository.findAll()
+      .stream()
+      .map(entryMapper::toResponseDto)
+      .toList();
+  }
 
-    String userEmail = authentication.getName();
-    User user = findUserByEmail(userEmail);
+  public List<EntryResponseDto> getEntriesByUserUuid(String userUuid) {
+    User user = findUserByUuid(userUuid);
 
-    List<Entry> entries;
-
-    if (user.getRole() == Role.ADMIN) {
-      entries = entryRepository.findAll();
-    } else {
-      entries = entryRepository.findByUser(user);
-    }
-
-    return entries
+    return entryRepository.findByUser(user)
       .stream()
       .map(entryMapper::toResponseDto)
       .toList();
   }
 
   public EntryResponseDto getEntryByUuid(String uuid) {
-    Entry entry = findEntryByUuid(uuid);
-    validateEntryOwnership(entry);
-    
-    return entryMapper.toResponseDto(entry);
+    return entryMapper.toResponseDto(findEntryByUuid(uuid));
   }
 
   public EntryResponseDto createEntry(EntryRequestDto entryRequestDto) {
@@ -108,6 +100,10 @@ public class EntryService {
 
   private User findUserByEmail(String email) {
     return userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("User with email: " + email + " not found"));
+  }
+
+  private User findUserByUuid(String uuid) {
+    return userRepository.findById(uuid).orElseThrow(() -> new ResourceNotFoundException("User with UUID: " + uuid + " not found"));
   }
 
   private Entry findEntryByUuid(String uuid) {

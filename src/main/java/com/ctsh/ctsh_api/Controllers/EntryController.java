@@ -38,6 +38,13 @@ public class EntryController {
       ));
   }
 
+  @GetMapping("/user/{userUuid}")
+  public ResponseEntity<ApiResponse> getAllEntriesByUser(@PathVariable String userUuid) {
+    return ResponseEntity.status(HttpStatus.OK).body(
+      ApiResponse.of( HttpStatus.OK, "Entries retrieved successfully", entryService.getEntriesByUserUuid(userUuid)
+      ));
+  }
+
   @GetMapping("/{uuid}")
   public ResponseEntity<ApiResponse> getEntryByUuid(@PathVariable String uuid) {
     return ResponseEntity.status(HttpStatus.OK).body(
