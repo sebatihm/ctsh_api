@@ -29,6 +29,7 @@ A Spring Boot REST API for user management, global mood counters, an internal us
    - `CTSH_PEPPER` — pepper used by the password encoder
    - `CTSH_JWT_SECRET` — secret used to sign JWT tokens
    - `CTSH_BACKEND_URL` — public base URL of this service, used to build profile picture URLs
+   - `CTSH_FRONTEND_URL` — origin of the frontend, intended as the allowed CORS origin. (see [CORS](#cors))
 
 3. Run the application:
 
@@ -36,7 +37,7 @@ A Spring Boot REST API for user management, global mood counters, an internal us
    ./mvnw spring-boot:run
    ```
 
-The API is served under the `/api` context path. There is no CORS configuration: the auth cookie is `SameSite=Strict`, which only works same-origin. In production, serve the frontend and proxy `/api` to this service from a single public origin (for example nginx in the frontend container), so the browser only ever talks to one host.
+The API is served under the `/api` context path. CORS is configured in `WebConfig.addCorsMappings` for the single origin in `app.url.frontend` (default `http://localhost:3000`), with `allowCredentials(true)`, all methods and headers, and `Authorization` exposed. Because the auth cookie is `SameSite=Strict`, that CORS setup alone does **not** make a cross-origin frontend work — see [Splitting the frontend and API onto different origins](#splitting-the-frontend-and-api-onto-different-origins). In the recommended deployment, serve the frontend and proxy `/api` to this service from a single public origin (for example nginx in the frontend container), so the browser only ever talks to one host and CORS never comes into play.
 
 `spring.jpa.hibernate.ddl-auto` is `update`, so the tables are created and evolved automatically; you do not need to run any migration.
 
@@ -183,6 +184,15 @@ Both secrets ship with insecure dev defaults; override them in production.
 
 `app.url.backend` has to be the **public** origin, because the URL ends up in a JSON response that the end user's browser fetches. Do not put the container's internal address there. In production, where nginx serves the frontend and proxies `/api` to this service, set it to the public origin (`https://miapp.com`) so the browser only ever talks to one host.
 
+### CORS
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `app.url.frontend` | `http://localhost:3000` | Allowed CORS origin.|
+
+`WebConfig.addCorsMappings` registers this single origin for `/**` with `allowedMethods(GET, POST, PUT, DELETE, OPTIONS)`, `allowedHeaders("*")`, `exposedHeaders("Authorization")` and `allowCredentials(true)`. Setting `app.url.frontend` to the frontend's public origin is what a split-origin deployment needs; `SecurityConfig` activates the CORS handling in the security chain via `.cors(Customizer.withDefaults())`.
+
+
 ### Auth cookie
 
 | Key | Default | Notes |
@@ -197,15 +207,17 @@ The cookie is `HttpOnly`, so the frontend never reads it and auth happens automa
 
 A browser only stores a `Secure` cookie over HTTPS. `http://localhost` counts as a secure context in modern browsers, so local development works — but `http://192.168.x.x` does not, and with `app.cookie.secure=true` the login will appear to succeed while the cookie is silently discarded.
 
-### If you ever split the frontend and API onto different origins
+### Splitting the frontend and API onto different origins
 
-`SameSite=Strict` will not send the cookie cross-origin. Supporting that setup requires **all three** changes at once:
+CORS is already configured (see [CORS](#cors)), but that is only one of the pieces. `SameSite=Strict` will still not send the cookie cross-origin, so a split deployment requires the remaining changes too:
 
 1. `app.cookie.same-site=None` (with `app.cookie.secure=true`, browsers reject `SameSite=None` without `Secure`).
-2. A real CORS configuration with `allowCredentials(true)` and explicit origins — a wildcard `*` is rejected by the browser when credentials are involved.
+2. Point `WebConfig`'s allowed origin at the real frontend origin (see [CORS](#cors)); it must stay an explicit origin, since a wildcard `*` is rejected by the browser when `allowCredentials(true)` is set.
 3. Re-enabling CSRF, which is currently disabled. Use `CookieCsrfTokenRepository.withHttpOnlyFalse()` with an endpoint that exposes the token, and have the client send the `X-XSRF-TOKEN` header on every non-GET request.
 
 Skipping step 3 turns cookie-based auth into a CSRF vulnerability.
+
+Until all three are in place, keep the single-origin deployment: serve the frontend and proxy `/api` to this service from one public origin, so the browser only ever talks to one host and neither CORS nor `SameSite` matters.
 
 ## Tests
 

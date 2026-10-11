@@ -48,5 +48,10 @@
     "name": "app.uploads.url-path",
     "type": "java.lang.String",
     "description": "The URL path prefix for accessing uploaded files."
+  },
+  {
+    "name": "app.url.frontend",
+    "type": "java.lang.String",
+    "description": "The base URL for the frontend application."
   }
 ]}
