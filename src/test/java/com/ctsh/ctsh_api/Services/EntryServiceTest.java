@@ -117,11 +117,11 @@ public class EntryServiceTest {
 
   @Test
   void testGetEntries() {
-    User user = createTestUser("user-uuid", "user@example.com", "test-user", true);
+    User user = createTestUser("user-uuid", "user@example.com", "test-user", false);
     Entry entry = createTestEntry("entry-uuid", user);
     Entry entry2 = createTestEntry("entry-uuid2", user);
 
-    when(entryRepository.findByUser(user)).thenReturn(List.of(entry, entry2));
+    when(entryRepository.findAll()).thenReturn(List.of(entry, entry2));
 
     List<EntryResponseDto> result = entryService.getEntries();
 
@@ -133,12 +133,13 @@ public class EntryServiceTest {
 
   @Test
   void testGetEntriesByUser() {
-    User user = createTestUser("user-uuid", "user@example.com", "test-user", true);
+    User user = createTestUser("user-uuid", "user@example.com", "test-user", false);
     Entry entry = createTestEntry("entry-uuid", user);
 
     when(entryRepository.findByUser(user)).thenReturn(List.of(entry));
+    when(userRepository.findById(user.getUuid())).thenReturn(Optional.of(user));
 
-    List<EntryResponseDto> result = entryService.getEntries();
+    List<EntryResponseDto> result = entryService.getEntriesByUserUuid("user-uuid");
 
 
     assertEquals(1, result.size());
@@ -146,29 +147,11 @@ public class EntryServiceTest {
 
   }
 
-  @Test
-  void testGetEntriesByAdmin() {
-    User user = createTestUser("user-uuid", "user@example.com", "test-user", false);
-    User user2 = createTestUser("user2-uuid", "user2@example.com", "test-user2", false);
-    Entry entry = createTestEntry("entry-uuid", user);
-    Entry entry2 = createTestEntry("entry-uuid2", user2);
 
-    createAdminUser();
-
-    when(entryRepository.findAll()).thenReturn(List.of(entry,entry2));
-
-    List<EntryResponseDto> result = entryService.getEntries();
-
-
-    assertEquals(2, result.size());
-    assertEquals("entry-uuid", result.get(0).getUuid());
-    assertEquals("entry-uuid2", result.get(1).getUuid());
-
-  }
 
   @Test
   void testGetEntryById() {
-    User user = createTestUser("user-uuid", "user@example.com", "test-user", true);
+    User user = createTestUser("user-uuid", "user@example.com", "test-user", false);
     Entry entry = createTestEntry("entry-uuid", user);
 
     when(entryRepository.findById(entry.getUuid())).thenReturn(Optional.of(entry));
@@ -179,36 +162,6 @@ public class EntryServiceTest {
 
   }
 
-
-
-  @Test
-  void testGetEntryByIdWithInvalidUser() {
-    User user = createTestUser("user-uuid", "user@example.com", "test-user", false);
-    createTestUser("user-uuid2", "user@example.com2", "test-user2", true);
-    Entry entry = createTestEntry("entry-uuid", user);
-
-    when(entryRepository.findById(entry.getUuid())).thenReturn(Optional.of(entry));
-
-    assertThrows(
-      AccessDeniedException.class,
-      () -> entryService.getEntryByUuid(entry.getUuid())
-    );
-
-  }
-
-  @Test
-  void testGetEntryByIdWithAdmin() {
-    User user = createTestUser("user-uuid", "user@example.com", "test-user", false);
-    Entry entry = createTestEntry("entry-uuid", user);
-    createAdminUser();
-
-    when(entryRepository.findById(entry.getUuid())).thenReturn(Optional.of(entry));
-
-    EntryResponseDto result = entryService.getEntryByUuid(entry.getUuid());
-
-    assertEquals("entry-uuid", result.getUuid());
-
-  }
 
   @Test
   void testCreateEntry() {

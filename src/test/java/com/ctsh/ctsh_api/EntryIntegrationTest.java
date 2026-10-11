@@ -85,18 +85,14 @@ public class EntryIntegrationTest {
   }
 
   @Test
-  void testGetEntriesSuccessfully() throws Exception {
+  void testGetByUserEntriesSuccessfully() throws Exception {
     User user = createUserTest("USER", "john@example.com");
 
     createTestEntry(createUserTest("USER", "jane@example.com"));
     createTestEntry(user);
-    
-    MvcResult result = loginTestUser(user);
-    String token = result.getResponse().getCookie("jwt").getValue();
 
     mockMvc.perform(
-      get("/entry")
-        .header("Authorization", "Bearer " + token)
+      get("/entry/user/" + user.getUuid())
         .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isOk())
     .andExpect(jsonPath("$.data[0].user.email").value("john@example.com"))
@@ -104,18 +100,24 @@ public class EntryIntegrationTest {
   }
 
   @Test
-  void testGetEntriesSuccessfullyAdmin() throws Exception {
+  void testGetByUserEntriesNotFound() throws Exception {
+
+    mockMvc.perform(
+      get("/entry/user/non-existent-uuid")
+        .contentType(MediaType.APPLICATION_JSON)
+    ).andExpect(status().isNotFound())
+    .andReturn();
+  }
+
+  @Test
+  void testGetEntriesAll() throws Exception {
     User user = createUserTest("ADMIN", "john@example.com");
 
     createTestEntry(createUserTest("USER", "jane@example.com"));
     createTestEntry(user);
-    
-    MvcResult result = loginTestUser(user);
-    String token = result.getResponse().getCookie("jwt").getValue();
 
     mockMvc.perform(
       get("/entry")
-        .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isOk())
     .andExpect(jsonPath("$.data[0].user.email").value("jane@example.com"))
@@ -128,12 +130,8 @@ public class EntryIntegrationTest {
     User user = createUserTest("USER", "john@example.com");
     Entry entry = createTestEntry(user);
 
-    MvcResult result = loginTestUser(user);
-    String token = result.getResponse().getCookie("jwt").getValue();
-
     mockMvc.perform(
       get("/entry/" + entry.getUuid())
-        .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isOk())
     .andExpect(jsonPath("$.data.user.email").value("john@example.com"))
@@ -142,52 +140,13 @@ public class EntryIntegrationTest {
 
   @Test
   void testGetEntryByIdNotFound() throws Exception {
-    User user = createUserTest("USER", "john@example.com");
-
-    MvcResult result = loginTestUser(user);
-    String token = result.getResponse().getCookie("jwt").getValue();
-
     mockMvc.perform(
       get("/entry/non-existent-uuid")
-        .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
     ).andExpect(status().isNotFound())
     .andReturn();
   }
 
-  @Test
-  void testGetEntryWithInvalidUser() throws Exception {
-    User user1 = createUserTest("USER", "john@example.com");
-    User user2 = createUserTest("USER", "jane@example.com");
-    Entry entry = createTestEntry(user1);
-
-    MvcResult result = loginTestUser(user2);
-    String token = result.getResponse().getCookie("jwt").getValue();
-
-    mockMvc.perform(
-      get("/entry/" + entry.getUuid())
-        .header("Authorization", "Bearer " + token)
-        .contentType(MediaType.APPLICATION_JSON)
-    ).andExpect(status().isForbidden())
-    .andReturn();
-  }
-
-  @Test
-  void testGetEntryWithAdminUser() throws Exception {
-    User user1 = createUserTest("USER", "john@example.com");
-    User admin = createUserTest("ADMIN", "jane@example.com");
-    Entry entry = createTestEntry(user1);
-
-    MvcResult result = loginTestUser(admin);
-    String token = result.getResponse().getCookie("jwt").getValue();
-
-    mockMvc.perform(
-      get("/entry/" + entry.getUuid())
-        .header("Authorization", "Bearer " + token)
-        .contentType(MediaType.APPLICATION_JSON)
-    ).andExpect(status().isOk())
-    .andExpect(jsonPath("$.data.user.email").value("john@example.com"));
-  }
 
   @Test
   void testCreateEntrySuccessfully() throws Exception {
