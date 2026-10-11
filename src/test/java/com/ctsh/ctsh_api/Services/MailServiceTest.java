@@ -63,6 +63,14 @@ public class MailServiceTest {
     return mail;
   }
 
+  private Mail createMailWithFromAndTo(User from, User to, String message) {
+    Mail mail = new Mail();
+    mail.setFrom(from);
+    mail.setTo(to);
+    mail.setMessage(message);
+    return mail;
+  }
+
   @BeforeEach
   private void setUp() {
     UserMapper userMapper = new UserMapper(fileService);
@@ -94,6 +102,48 @@ public class MailServiceTest {
     MailResponseDto result = mailService.getMailByUuid(testMail.getUuid());
     assertEquals("Subject 1", result.getFrom().getName());
     assertEquals("Subject 1.1", result.getTo().getName());
+    assertEquals("Body 1", result.getMessage());
+  }
+
+  @Test
+  void testGetMailFromUuid() {
+    User fromUser = createTestUser("Sender", "senderemail@example.com");
+    User toUser = createTestUser("Receiver", "receiveremail@example.com");
+    Mail testMail = createMailWithFromAndTo(fromUser, toUser, "Body 1");
+
+    when(mailRepository.findByFrom_Uuid(testMail.getFrom().getUuid())).thenReturn(List.of(testMail));
+    when(userRepository.findById(testMail.getFrom().getUuid())).thenReturn(Optional.of(fromUser));
+    when(fileService.getPublicUrl("profile.jpg")).thenReturn("profile.jpg");
+
+    MailResponseDto result = mailService.getMailsByUserUuid(testMail.getFrom().getUuid(), true).get(0);
+    assertEquals("Sender", result.getFrom().getName());
+    assertEquals("Receiver", result.getTo().getName());
+    assertEquals("Body 1", result.getMessage());
+  }
+
+  @Test
+  void testGetMailUserUuidThatDoesNotExist() {
+    String nonExistentUuid = UUID.randomUUID().toString();
+    when(userRepository.findById(nonExistentUuid)).thenReturn(Optional.empty());
+
+    assertThrows(ResourceNotFoundException.class, () -> {
+      mailService.getMailsByUserUuid(nonExistentUuid, true);
+    });
+  }
+
+  @Test
+  void testGetMailToUuid() {
+    User fromUser = createTestUser("Sender", "senderemail@example.com");
+    User toUser = createTestUser("Receiver", "receiveremail@example.com");
+    Mail testMail = createMailWithFromAndTo(fromUser, toUser, "Body 1");
+
+    when(mailRepository.findByTo_Uuid(testMail.getTo().getUuid())).thenReturn(List.of(testMail));
+    when(userRepository.findById(testMail.getTo().getUuid())).thenReturn(Optional.of(toUser));
+    when(fileService.getPublicUrl("profile.jpg")).thenReturn("profile.jpg");
+
+    MailResponseDto result = mailService.getMailsByUserUuid(testMail.getTo().getUuid(), false).get(0);
+    assertEquals("Sender", result.getFrom().getName());
+    assertEquals("Receiver", result.getTo().getName());
     assertEquals("Body 1", result.getMessage());
   }
 

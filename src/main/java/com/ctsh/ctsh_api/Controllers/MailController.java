@@ -38,6 +38,21 @@ public class MailController {
     ));
   }
 
+  @GetMapping("/from/{uuid}")
+  public ResponseEntity<ApiResponse> getAllMailsByFromUserUuid(@PathVariable String uuid) {
+    return ResponseEntity.status(HttpStatus.OK).body(
+      ApiResponse.of(HttpStatus.OK,"Mails retrieved successfully", this.mailService.getMailsByUserUuid(uuid, true)
+    ));
+  }
+
+
+  @GetMapping("/to/{uuid}")
+  public ResponseEntity<ApiResponse> getAllMailsByToUserUuid(@PathVariable String uuid) {
+    return ResponseEntity.status(HttpStatus.OK).body(
+      ApiResponse.of(HttpStatus.OK,"Mails retrieved successfully", this.mailService.getMailsByUserUuid(uuid, false)
+    ));
+  }
+
   @GetMapping("/{uuid}")
   public ResponseEntity<ApiResponse> getMailByUuid(@PathVariable String uuid) {
       return ResponseEntity.status(HttpStatus.OK).body(

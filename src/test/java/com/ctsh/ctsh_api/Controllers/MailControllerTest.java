@@ -86,6 +86,30 @@ public class MailControllerTest {
   }
 
   @Test
+  void testGetMailByFromUserUuid() throws Exception {
+    when(mailService.getMailsByUserUuid("sender-uuid", true)).thenReturn(List.of(mail()));
+
+    mockMvc.perform(get("/mail/from/sender-uuid"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data[0].uuid").value("uuid-1234"))
+      .andExpect(jsonPath("$.data[0].from.name").value("John Doe"))
+      .andExpect(jsonPath("$.data[0].to.name").value("Jane Smith"))
+      .andExpect(jsonPath("$.data[0].message").value("Hello, this is a test email."));
+  }
+
+  @Test
+  void testGetMailByToUserUuid() throws Exception {
+    when(mailService.getMailsByUserUuid("recipient-uuid", false)).thenReturn(List.of(mail()));
+
+    mockMvc.perform(get("/mail/to/recipient-uuid"))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.data[0].uuid").value("uuid-1234"))
+      .andExpect(jsonPath("$.data[0].from.name").value("John Doe"))
+      .andExpect(jsonPath("$.data[0].to.name").value("Jane Smith"))
+      .andExpect(jsonPath("$.data[0].message").value("Hello, this is a test email."));
+  }
+
+  @Test
   void testCreateMail() throws Exception {
     MailRequestDto requestDto = new MailRequestDto("sender-uuid", "recipient-uuid", "Hello, this is a test email.");
     when(mailService.createMail(requestDto))
